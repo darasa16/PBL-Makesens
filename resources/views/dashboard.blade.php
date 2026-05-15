@@ -1,205 +1,258 @@
 @extends('layouts.auth') 
 
-@section('title', 'Dashboard')
-
-@push('styles')
-<style>
-    body { background-color: #AEDEFC; overflow-y: auto; font-family: 'Poppins', sans-serif; }
-    .sidebar { width: 300px; background: #FFF6F6; height: 100vh; position: fixed; left: 0; top: 0; z-index: 50; }
-    .main-content { margin-left: 300px; padding: 40px; }
-    .card-sensor { background: white; border-radius: 15px; padding: 20px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
-    .card-sensor:hover { transform: translateY(-5px); }
-    .sidebar-item { display: flex; align-items: center; padding: 15px 30px; margin: 10px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; }
-    .sidebar-active { background: #FFDFDF; color: #F875AA; }
-    .sidebar-inactive { color: #177FB9; }
-    .bg-makesens-blue { background-color: #177FB9; }
-</style>
-@endpush
+@section('title', 'Dashboard MAKESENSES+AI')
 
 @section('content')
-<div class="flex">
-    <aside class="sidebar flex flex-col py-8">
-        <div class="px-8 mb-12">
-            <img src="{{ asset('images/Logo Makesens.png') }}" alt="Logo" class="w-48">
+<div class="flex min-h-screen bg-[#AEDEFC] font-['Poppins']">
+    
+    <aside id="sidebar" class="fixed left-0 top-0 w-[322px] h-full bg-[#FFF6F6] shadow-[0px_4px_4px_10px_#FFDFDF] z-50 transition-all duration-300 overflow-hidden">
+        <div id="sidebar-header" class="p-2 flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center gap-1">
+                <img src="{{ asset('images/Logo Makesens Lingkaran.png') }}" class="w-[85px] h-[80px] shrink-0">
+                <span class="text-[30px] font-medium text-[#177FB9] sidebar-text whitespace-nowrap">Makesens</span>
+            </div>
+            
+            <button onclick="toggleSidebar()" class="mr-4 mt-2 hover:scale-110 transition-transform shrink-0">
+                <iconify-icon icon="ph:sliders-horizontal-bold" class="text-[#F875AA] text-[24px]"></iconify-icon>
+            </button>
         </div>
-        <nav class="flex-1">
-            <a href="{{ route('dashboard') }}" class="sidebar-item sidebar-active">
-                <i data-lucide="layout-dashboard" class="mr-4"></i> Dashboard
+        
+        <nav class="mt-10 px-4">
+            <a href="#" class="flex items-center gap-3 p-4 bg-[#F875AA]/20 rounded-[10px] font-bold mb-4">
+                <iconify-icon icon="mage:dashboard-fill" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
+                <span class="text-[20px] text-[#177FB9] sidebar-text whitespace-nowrap">Dashboard</span>
             </a>
-            <a href="#" class="sidebar-item sidebar-inactive">
-                <i data-lucide="brain-circuit" class="mr-4"></i> Intelligent Analysis
+            <a href="#" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
+                <iconify-icon icon="fluent:receipt-sparkles-20-filled" class="text-[#F875AA] text-[35px] shrink-0"></iconify-icon>
+                <span class="text-[20px] sidebar-text whitespace-nowrap">Intelligent Analysis</span>
             </a>
-            <a href="#" class="sidebar-item sidebar-inactive">
-                <i data-lucide="bar-chart-3" class="mr-4"></i> Report Management
+            <a href="#" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
+                <iconify-icon icon="mage:chart-fill" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
+                <span class="text-[20px] sidebar-text whitespace-nowrap">Report Management</span>
             </a>
-            <a href="#" class="sidebar-item sidebar-inactive">
-                <i data-lucide="history" class="mr-4"></i> History & Reports
+            <a href="#" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
+                <iconify-icon icon="mdi:file-clock" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
+                <span class="text-[20px] sidebar-text whitespace-nowrap">History & Reports</span>
             </a>
         </nav>
-        
-        <div class="px-4 mt-auto mb-6">
-            <form action="{{ route('logout') }}" method="POST">
-                @csrf
-                <button type="submit" class="sidebar-item sidebar-inactive w-full text-left">
-                    <i data-lucide="log-out" class="mr-4"></i> Logout
-                </button>
-            </form>
-        </div>
     </aside>
 
-    <main class="main-content w-full">
-        <header class="flex justify-between items-center mb-10">
-            <div class="flex items-center space-x-4">
-                <span class="text-xl font-medium text-blue-900" id="live-clock">{{ now()->format('h:i:s A') }}</span>
-                <span class="text-xl font-medium text-blue-900">{{ now()->format('l, d F Y') }}</span>
-                <i data-lucide="bell" class="text-blue-900 w-6 h-6 cursor-pointer"></i>
-            </div>
-            <div class="flex items-center space-x-4">
-                <div class="text-right">
-                    <p class="font-semibold text-blue-900 leading-none">Hai, {{ session('firebase_user')['name'] ?? 'Dara Samsara Ayu' }}</p>
-                    <small class="text-blue-700 text-xs italic">Operator MAKESENSES+AI</small>
+    <main id="main-content" class="flex-1 ml-[322px] pt-4 px-10 pb-10 transition-all duration-300">
+        
+        <header class="flex justify-between items-center mb-12">
+            <div class="flex items-center gap-8 text-[22px] text-black">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="iconamoon:clock-light" class="text-[#F875AA] text-[28px]"></iconify-icon>
+                    <span id="time-display" class="font-medium"></span>
                 </div>
-                <img src="{{ asset('images/avatar.png') }}" class="w-12 h-12 rounded-full border-2 border-white shadow object-cover">
+                <div class="flex items-center gap-2">
+                    <iconify-icon icon="uil:calender" class="text-[#F875AA] text-[28px]"></iconify-icon>
+                    <span class="font-medium">{{ now()->format('l, d F Y') }}</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <span class="text-[22px] font-medium text-[#000000]">
+                    Hai, {{ session('firebase_user.nama') ?? session('firebase_user.name') ?? 'User' }}
+                </span>    
+
+                <div class="w-[70px] h-[70px] rounded-full shadow-sm overflow-hidden bg-gray-200">
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode(session('firebase_user.nama') ?? session('firebase_user.name') ?? 'User') }}&background=F875AA&color=fff"
+                         alt="Profile"
+                         class="w-full h-full object-cover">
+                </div>
             </div>
         </header>
 
-        <div class="grid grid-cols-4 gap-6 mb-8">
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Suhu Udara</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['suhu'] ?? '-' }}°C</h3>
+        <div class="grid grid-cols-4 gap-x-[30px] gap-y-[40px] mb-12">
+            @php
+                $floatVal = $latest['float_level'] ?? '0';
+                $statusLevel = ($floatVal == '1') ? 'Air Tinggi' : 'Aman';
+
+                $sensors = [
+                    ['Suhu Udara', ($latest['suhu'] ?? '--') . '°C'],
+                    ['Kelembaban Udara', ($latest['kelembapan'] ?? '----') . '%'],
+                    ['Tekanan Udara', ($latest['tekanan'] ?? '----') . ' hPa'],
+                    ['Jarak Air', ($latest['jarak_air'] ?? '----') . ' cm'],
+                    ['Laju Aliran', ($latest['flow'] ?? '----') . ' L/m'],
+                    ['Total Hujan', ($latest['rain_total'] ?? '----') . ' mm'],
+                    ['Intensitas Hujan', ($latest['rain_rate'] ?? '----') . ' mm/h'],
+                    ['Status Level', $statusLevel ?? '----'],
+                ];
+            @endphp
+
+            @foreach($sensors as $sensor)
+            <div class="bg-white rounded-[15px] p-4 h-[106px] flex flex-col justify-center text-center shadow-sm">
+                <h3 class="text-[18px] font-bold text-black">{{ $sensor[0] }}</h3>
+                <p class="text-[18px] font-bold mt-2 text-black">{{ $sensor[1] }}</p>
             </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Kelembaban Udara</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['kelembapan'] ?? '-' }}%</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Tekanan Udara</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['tekanan'] ?? '-' }} hPa</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Jarak Permukaan Air</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['jarak_air'] ?? '-' }} cm</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Laju Aliran Sungai</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['flow'] ?? '-' }} L/m</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Total Curah Hujan</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['rain_total'] ?? '-' }} mm</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Intensitas Hujan</p>
-                <h3 class="text-2xl font-bold text-blue-900">{{ $latest['rain_rate'] ?? '-' }} mm/h</h3>
-            </div>
-            <div class="card-sensor">
-                <p class="text-gray-500 font-bold text-sm mb-2 uppercase">Status Level Air</p>
-                <h3 class="text-2xl font-bold text-pink-500">{{ $latest['float_level'] ?? 'Aman' }}</h3>
-            </div>
+            @endforeach
         </div>
 
-        <div class="grid grid-cols-3 gap-6 mb-8">
-            <div class="col-span-1 bg-makesens-blue rounded-2xl p-6 text-white shadow-lg">
-                <div class="flex items-center mb-4"><i data-lucide="video" class="mr-2"></i> CCTV Live Stream</div>
-                <div class="bg-black/20 w-full h-64 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-white/30">
-                    <i data-lucide="video-off" class="w-12 h-12 mb-2 text-white/50"></i>
-                    <p class="text-white/70 italic text-sm text-center px-4">Stream Offline. Menunggu koneksi ESP32-CAM.</p>
+        <div class="grid grid-cols-2 gap-[40px] mb-12">
+            
+            <div class="flex flex-col gap-[40px]">
+                <div class="bg-[#177FB9] rounded-[30px] p-6 h-[500px] flex flex-col shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <iconify-icon icon="mdi:camera" class="text-white text-[28px]"></iconify-icon>
+                        <h4 class="text-white text-[25px] font-bold">CCTV</h4>
+                    </div>
+                    <div class="flex-1 bg-black rounded-[10px] border-[8px] border-[#177FB9] overflow-hidden">
+                        <video id="video-cctv" class="w-full h-full object-cover" controls autoplay muted></video>
+                    </div>
                 </div>
-            </div>
 
-            <div class="col-span-1 flex flex-col space-y-6">
-                <div class="bg-white rounded-2xl p-8 flex items-center shadow-lg border-l-8 border-pink-400">
-                    <div class="bg-pink-100 p-4 rounded-full mr-6">
-                        <i data-lucide="shield-alert" class="text-pink-500 w-12 h-12"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-3xl font-bold text-gray-800">Siaga 2</h2>
-                        <p class="text-xl text-gray-500">Kondisi: Waspada</p>
-                    </div>
-                </div>
-                
-                <div class="bg-white rounded-2xl p-6 shadow-lg">
-                    <p class="font-bold text-blue-900 mb-4 uppercase text-xs tracking-wider">Weather Status</p>
-                    <div class="flex items-center justify-around">
-                        <i data-lucide="cloud-sun" class="text-pink-400 w-16 h-16"></i>
-                        <div>
-                            <span class="text-4xl font-black text-gray-800">
-                                {{ $bmkgParams['t'] ?? '--' }}°C
-                            </span>
-                            <p class="text-gray-500 font-medium">
-                                {{ $bmkgParams['weather_desc'] ?? 'Memuat data...' }}
-                            </p>
+                <div class="bg-white rounded-[30px] pt-4 px-8 pb-8 h-[180px] flex flex-col items-start shadow-sm relative overflow-hidden">
+                    <h4 class="text-black text-[20px] font-bold mb-4 mt-[10px]">Status Cuaca by BMKG</h4>
+                    <div class="flex items-center gap-10">
+                        @php
+                            $weather = strtolower($bmkgParams['weather_desc'] ?? '');
+                            $hour = now()->format('H'); 
+                            $isNight = ($hour >= 18 || $hour <= 05); 
+                        @endphp
+
+                        @if(str_contains($weather, 'hujan'))
+                            <iconify-icon icon="wi:rain" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @elseif(str_contains($weather, 'petir'))
+                            <iconify-icon icon="wi:thunderstorm" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @elseif(str_contains($weather, 'kabur') || str_contains($weather, 'kabut'))
+                            <iconify-icon icon="wi:fog" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @elseif(str_contains($weather, 'berawan') || str_contains($weather, 'mendung'))
+                            <iconify-icon icon="{{ $isNight ? 'wi:night-alt-cloudy' : 'wi:day-cloudy' }}" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @elseif($isNight)
+                            <iconify-icon icon="wi:night-clear" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @else
+                            <iconify-icon icon="wi:day-sunny" class="text-[#F875AA] text-[100px]"></iconify-icon>
+                        @endif
+
+                        <div class="flex flex-col justify-center">
+                            <span class="text-[50px] font-bold block leading-none">{{ $bmkgParams['t'] ?? '--' }}°C</span>
+                            <span class="text-[25px] font-medium text-gray-500 mt-1">{{ $bmkgParams['weather_desc'] ?? '--' }}</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-span-1 bg-makesens-blue rounded-2xl p-6 text-white shadow-lg">
-                <div class="flex items-center mb-4"><i data-lucide="map-pin" class="mr-2"></i> Node Location</div>
-                <iframe 
-                    class="w-full h-64 rounded-lg shadow-inner bg-white"
-                    frameborder="0" 
-                    style="border:0;" 
-                    allowfullscreen="" 
-                    loading="lazy" 
-                    referrerpolicy="no-referrer-when-downgrade"
-                    src="https://maps.google.com/maps?q={{ $lat }},{{ $lng }}&hl=id&z=15&output=embed">
-                </iframe>
-                <a href="https://www.google.com/maps?q={{ $lat }},{{ $lng }}" 
-                   target="_blank" 
-                   class="mt-4 block text-center text-xs bg-white/20 hover:bg-white/30 py-2 rounded-lg transition font-semibold uppercase">
-                   Klik untuk Navigasi (Google Maps)
-                </a>
+            <div class="flex flex-col gap-[40px]">
+                <div class="bg-white rounded-[30px] p-6 h-[160px] flex items-center gap-6 shadow-sm">
+                    <iconify-icon icon="si:shield-alert-fill" class="text-[#F875AA] text-[135px]"></iconify-icon>
+                    <div>
+                        <h4 class="text-[40px] font-bold text-black leading-tight">Siaga 2</h4>
+                        <p class="text-[25px] font-medium text-gray-500">Kondisi: waspada</p>
+                    </div>
+                </div>
+
+                <div class="bg-[#177FB9] rounded-[30px] p-6 h-[520px] flex flex-col shadow-sm">
+                    <div class="flex items-center gap-2 mb-4">
+                        <iconify-icon icon="mdi:location" class="text-white text-[28px]"></iconify-icon>
+                        <h4 class="text-white text-[25px] font-bold">Node Location</h4>
+                    </div>
+                    <div class="flex-1 bg-white rounded-[10px] border-[8px] border-[#177FB9] overflow-hidden">
+                        <iframe 
+                            width="100%" height="100%" frameborder="0" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.google.com/maps?q={{ $lat }},{{ $lng }}&hl=id&z=17&output=embed"
+                            class="w-full h-full">
+                        </iframe>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="mt-10">
-            <h2 class="text-2xl font-bold text-blue-900 mb-6 flex items-center">
-                <i data-lucide="wind" class="mr-3"></i> Parameter by BMKG
-            </h2>
-            <div class="grid grid-cols-3 gap-6">
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Suhu Udara</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['t'] ?? '----' }}°C</h3>
+        <div class="mt-12">
+            <h5 class="text-[20px] font-medium text-black mb-6">Parameter Perkiraan Cuaca by BMKG</h5>
+            <div class="grid grid-cols-3 gap-x-[40px] gap-y-[20px]">
+
+                @php
+                    // Mapping kode arah angin ke bahasa Indonesia
+                    $windDirMap = [
+                        'N' => 'Utara', 'NNE' => 'Utara Timur Laut', 'NE' => 'Timur Laut', 
+                        'ENE' => 'Timur Timur Laut', 'E' => 'Timur', 'ESE' => 'Timur Menenggara', 
+                        'SE' => 'Tenggara', 'SSE' => 'Selatan Menenggara', 'S' => 'Selatan', 
+                        'SSW' => 'Selatan Barat Daya', 'SW' => 'Barat Daya', 'WSW' => 'Barat Barat Daya', 
+                        'W' => 'Barat', 'WNW' => 'Barat Barat Laut', 'NW' => 'Barat Laut', 
+                        'NNW' => 'Utara Barat Laut'
+                    ];
+
+                    $wdRaw = $bmkgParams['wd'] ?? '----';
+                    $windDirIndo = $windDirMap[$wdRaw] ?? $wdRaw; // Pakai hasil map, kalau ga ada pakai aslinya
+
+                    $bmkgItems = [
+                        ['Suhu Udara', ($bmkgParams['t'] ?? '----') . '°C'],
+                        ['Kelembapan Udara', ($bmkgParams['hu'] ?? '----') . '%'],
+                        ['Jarak Pandang', ($bmkgParams['vs'] ?? '----') . ' km'],
+                        ['Arah Angin', $windDirIndo], // Sekarang jadi bahasa Indonesia!
+                        ['Kecepatan Angin', ($bmkgParams['ws'] ?? '----') . ' km/jam'],
+                        ['Kondisi Awan', $bmkgParams['weather_desc'] ?? '----'],
+                    ];
+                @endphp
+
+                @foreach($bmkgItems as $item)
+                <div class="bg-white rounded-[15px] h-[122px] p-6 text-center shadow-sm flex flex-col justify-center">
+                    <h3 class="text-[18px] font-bold text-black">{{ $item[0] }}</h3>
+                    <p class="text-[18px] font-bold mt-2 text-black">{{ $item[1] }}</p>
                 </div>
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Kelembapan Udara</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['hu'] ?? '----' }}%</h3>
-                </div>
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Jarak Pandang</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['vs'] ?? '----' }}</h3>
-                </div>
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Kecepatan Angin</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['ws'] ?? '----' }} km/jam</h3>
-                </div>
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Arah Angin</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['wd'] ?? '----' }}</h3>
-                </div>
-                <div class="card-sensor bg-blue-50/50">
-                    <p class="text-gray-500 font-bold mb-2">Kondisi Awan</p>
-                    <h3 class="text-2xl font-bold text-blue-900">{{ $bmkgParams['weather_desc'] ?? '----' }}</h3>
-                </div>
+                @endforeach
             </div>
         </div>
     </main>
 </div>
 
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
 <script>
-    // Pastikan library Lucide terload
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const sidebarHeader = document.getElementById('sidebar-header');
+        const texts = document.querySelectorAll('.sidebar-text');
+
+        if (sidebar.classList.contains('w-[322px]')) {
+            sidebar.classList.replace('w-[322px]', 'w-[105px]');
+            mainContent.classList.replace('ml-[322px]', 'ml-[105px]');
+            sidebarHeader.classList.replace('justify-between', 'justify-center');
+            texts.forEach(t => t.classList.add('hidden'));
+        } else {
+            sidebar.classList.replace('w-[105px]', 'w-[322px]');
+            mainContent.classList.replace('ml-[105px]', 'ml-[322px]');
+            sidebarHeader.classList.replace('justify-center', 'justify-between');
+            texts.forEach(t => t.classList.remove('hidden'));
+        }
     }
 
-    // Jam Live
-    setInterval(() => {
+    function updateClock() {
         const now = new Date();
-        const clockElement = document.getElementById('live-clock');
-        if(clockElement) {
-            clockElement.innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        const display = document.getElementById('time-display');
+        if(display) {
+            display.innerText = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true 
+            });
         }
-    }, 1000);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const video = document.getElementById('video-cctv');
+        const videoSrc = '{{ $cctvUrl }}'; 
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
+            });
+        } 
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = videoSrc;
+            video.addEventListener('loadedmetadata', function() {
+                video.play();
+            });
+        }
+    });
+
+    lucide.createIcons();
 </script>
 @endsection

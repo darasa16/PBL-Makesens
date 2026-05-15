@@ -40,7 +40,17 @@ class FloodController extends Controller
         $lat = -6.260403923230099;
         $lng = 106.84755218214767;
 
-        // Kirim semua data ke view dashboard
-        return view('dashboard', compact('latest', 'history', 'bmkgParams', 'lat', 'lng'));
+        // 4. KONFIGURASI CCTV
+        $cctvUrl = "http://34.101.201.35:8888/cam1/index.m3u8";
+
+        // Kirim semua data ke view dashboard menggunakan array
+        return view('dashboard', [
+            'latest' => $latest,
+            'history' => $history,
+            'bmkgParams' => $bmkgParams,
+            'lat' => $lat,
+            'lng' => $lng,
+            'cctvUrl' => $cctvUrl
+        ]);
     }
 }
