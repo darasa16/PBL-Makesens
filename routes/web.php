@@ -26,6 +26,9 @@ Route::middleware(['checkFirebase'])->group(function () {
     
     // Dashboard Utama: Mengambil data sensor dari FloodController
     Route::get('/dashboard', [FloodController::class, 'index'])->name('dashboard');
+
+    // TAMBAHKAN RUTE BARU INI UNTUK INTELLIGENT ANALYSIS
+    Route::get('/analysis', [FloodController::class, 'analysis'])->name('analysis');
     
     // Rute Logout
     Route::post('/logout', [FirebaseAuthController::class, 'logout'])->name('logout');
