@@ -52,13 +52,26 @@
                     <iconify-icon icon="uil:calender" class="text-[#F875AA] text-[24px] sm:text-[28px]"></iconify-icon>
                     <span class="font-medium">{{ now()->format('l, d F Y') }}</span>
                 </div>
-                <button class="relative flex items-center justify-center p-1 hover:scale-110 transition-transform duration-200 focus:outline-none">
-                    <iconify-icon icon="tabler:bell" class="text-[#F875AA] text-[26px] sm:text-[32px]"></iconify-icon>
-                    <span class="absolute top-1 right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500"></span>
-                    </span>
-                </button>
+                
+                <div class="relative">
+                    <button onclick="toggleNotificationDropdown()" class="relative flex items-center justify-center p-1 hover:scale-110 transition-transform duration-200 focus:outline-none">
+                        <iconify-icon icon="tabler:bell" class="text-[#F875AA] text-[26px] sm:text-[32px]"></iconify-icon>
+                        <span id="notif-badge" class="absolute top-1 right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3 hidden">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500"></span>
+                        </span>
+                    </button>
+
+                    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden text-sm">
+                        <div class="bg-[#FFF6F6] p-4 border-b border-[#FFDFDF] flex justify-between items-center">
+                            <span class="font-bold text-black">Notifikasi Peringatan</span>
+                            <button onclick="clearNotif()" class="text-xs text-[#F875AA] font-semibold hover:underline">Hapus Semua</button>
+                        </div>
+                        <div id="notif-list" class="max-h-60 overflow-y-auto divide-y divide-gray-50 text-xs">
+                            <div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada notifikasi kritis.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-4 self-end sm:self-auto">
@@ -162,7 +175,7 @@
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('main-content');
-        const sidebarHeader = document.getElementById('sidebar-header');  // 1. Ambil elemen header logo
+        const sidebarHeader = document.getElementById('sidebar-header');
         const texts = document.querySelectorAll('.sidebar-text');
         const isMobile = window.innerWidth < 1024;
 
@@ -171,12 +184,12 @@
         } else {
             if (sidebar.classList.contains('w-[322px]')) {
                 sidebar.classList.replace('w-[322px]', 'w-[105px]');
-                sidebarHeader.classList.replace('justify-between', 'justify-center'); // 2. Pindahkan logo ke tengah
+                sidebarHeader.classList.replace('justify-between', 'justify-center');
                 texts.forEach(t => t.classList.add('hidden'));
                 mainContent.classList.replace('lg:ml-[322px]', 'lg:ml-[105px]');
             } else {
                 sidebar.classList.replace('w-[105px]', 'w-[322px]');
-                sidebarHeader.classList.replace('justify-center', 'justify-between'); // 3. Kembalikan logo ke posisi awal
+                sidebarHeader.classList.replace('justify-center', 'justify-between');
                 texts.forEach(t => t.classList.remove('hidden'));
                 mainContent.classList.replace('lg:ml-[105px]', 'lg:ml-[322px]');
             }
@@ -194,5 +207,77 @@
     }
     setInterval(updateClock, 1000);
     updateClock();
+
+    // ==========================================
+    // SINKRONISASI LOGIKA NOTIFIKASI REAL-TIME (KEMBAR DASHBOARD)
+    // ==========================================
+    const alarmSound = new Audio("{{ asset('audio/sirine.mp3') }}");
+    let lastStatusSiaga = 0; 
+
+    function toggleNotificationDropdown() {
+        const dropdown = document.getElementById('notif-dropdown');
+        dropdown.classList.toggle('hidden');
+        
+        // Sesuai aturan: Hanya mematikan suara sirine saat diklik. Kedipan badge merah jangan hilang.
+        if (!dropdown.classList.contains('hidden')) {
+            alarmSound.pause();
+            alarmSound.currentTime = 0;
+        }
+    }
+
+    function clearNotif() {
+        document.getElementById('notif-list').innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada notifikasi kritis.</div>';
+    }
+
+    function fetchRealtimeNotification() {
+        fetch("{{ route('api.realtime') }}")
+            .then(response => response.json())
+            .then(data => {
+                const currentSiaga = data.angka_status;
+
+                // ATUR KEDIP BULATAN MERAH (NOTIF-BADGE) & SIRINE AUDIO
+                const notifBadge = document.getElementById('notif-badge');
+                if (currentSiaga === 1 || currentSiaga === 2) {
+                    notifBadge.classList.remove('hidden');
+                    
+                    if (lastStatusSiaga !== 1 && lastStatusSiaga !== 2) {
+                        alarmSound.loop = true;
+                        alarmSound.play().catch(error => console.log("Audio play blocked by browser setup:", error));
+                    }
+                } else if (currentSiaga === 3 || currentSiaga === 0) {
+                    notifBadge.classList.add('hidden');
+                    alarmSound.pause();
+                    alarmSound.currentTime = 0;
+                }
+
+                // RENDER DAFTAR RIWAYAT NOTIFIKASI 1 MINGGU
+                const notifList = document.getElementById('notif-list');
+                if (data.notif_history && data.notif_history.length > 0) {
+                    let htmlContent = '';
+                    data.notif_history.forEach(item => {
+                        let badgeColor = item.siaga === 1 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700';
+                        htmlContent += `
+                            <div class="p-4 hover:bg-gray-50 transition-colors flex flex-col gap-1 font-['Poppins']">
+                                <div class="flex justify-between items-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">SIAGA ${item.siaga}</span>
+                                    <span class="text-[10px] text-gray-400">${item.waktu}</span>
+                                </div>
+                                <p class="text-gray-700 font-medium">${item.pesan}</p>
+                            </div>
+                        `;
+                    });
+                    notifList.innerHTML = htmlContent;
+                } else {
+                    notifList.innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada riwayat siaga 1 & 2 dalam 1 minggu terakhir.</div>';
+                }
+
+                lastStatusSiaga = currentSiaga;
+            })
+            .catch(error => console.error("Gagal sinkronisasi data riwayat API di halaman History Reports:", error));
+    }
+
+    // Interval pooling disamakan 1 menit sekali (60000 ms) agar sinkron penuh di semua halaman web
+    setInterval(fetchRealtimeNotification, 60000);
+    setTimeout(fetchRealtimeNotification, 1000);
 </script>
 @endsection
