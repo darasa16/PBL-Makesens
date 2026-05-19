@@ -33,6 +33,9 @@ Route::middleware(['checkFirebase'])->group(function () {
     // --- RUTE BARU: HISTORY & REPORTS ---
     Route::get('/history-reports', [FloodController::class, 'history'])->name('history');
     
+    // --- RUTE PENDUKUNG: API DATA REAL-TIME ---
+    Route::get('/api/realtime-flood', [FloodController::class, 'getRealtimeData'])->name('api.realtime');
+    
     // Rute Logout
     Route::post('/logout', [FirebaseAuthController::class, 'logout'])->name('logout');
 });

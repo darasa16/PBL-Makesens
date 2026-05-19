@@ -54,13 +54,25 @@
                     <span class="font-medium">{{ now()->format('l, d F Y') }}</span>
                 </div>
                 
-                <button class="relative flex items-center justify-center p-1 hover:scale-110 transition-transform duration-200 focus:outline-none">
-                    <iconify-icon icon="tabler:bell" class="text-[#F875AA] text-[26px] sm:text-[32px]"></iconify-icon>
-                    <span class="absolute top-1 right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500"></span>
-                    </span>
-                </button>
+                <div class="relative">
+                    <button onclick="toggleNotificationDropdown()" class="relative flex items-center justify-center p-1 hover:scale-110 transition-transform duration-200 focus:outline-none">
+                        <iconify-icon icon="tabler:bell" class="text-[#F875AA] text-[26px] sm:text-[32px]"></iconify-icon>
+                        <span id="notif-badge" class="absolute top-1 right-1 flex h-2.5 w-2.5 sm:h-3 sm:w-3 hidden">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500"></span>
+                        </span>
+                    </button>
+
+                    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden text-sm">
+                        <div class="bg-[#FFF6F6] p-4 border-b border--[#FFDFDF] flex justify-between items-center">
+                            <span class="font-bold text-black">Notifikasi Peringatan</span>
+                            <button onclick="clearNotif()" class="text-xs text-[#F875AA] font-semibold hover:underline">Hapus Semua</button>
+                        </div>
+                        <div id="notif-list" class="max-h-60 overflow-y-auto divide-y divide-gray-50 text-xs">
+                            <div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada notifikasi kritis.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-4 self-end sm:self-auto">
@@ -152,7 +164,6 @@
                         <h4 class="text-[30px] sm:text-[40px] font-bold text-black leading-tight">
                             @php
                                 $statusRaw = $latest['prediction_status'] ?? 'Siaga 0';
-                                // Mengambil angka saja dari string di Firebase
                                 $angkaStatus = preg_replace('/[^0-9]/', '', $statusRaw);
                             @endphp
                             Siaga {{ !empty($angkaStatus) ? $angkaStatus : '0' }}
@@ -163,7 +174,7 @@
                             @if($angkaStatus == '1')
                                 tidak aman
                             @elseif($angkaStatus == '2')
-                                kondisi waspada
+                                waspada
                             @elseif($angkaStatus == '3')
                                 aman
                             @else
@@ -295,5 +306,114 @@
     });
 
     lucide.createIcons();
+
+    // ==========================================
+    // SKRIP LOGIKA BARU: REAL-TIME FETCHING & ADVANCED ALARM
+    // ==========================================
+    const alarmSound = new Audio("{{ asset('audio/sirine.mp3') }}");
+    let lastStatusSiaga = 0; 
+
+    function toggleNotificationDropdown() {
+        const dropdown = document.getElementById('notif-dropdown');
+        dropdown.classList.toggle('hidden');
+        
+        // MODIFIKASI TERKUNCI: Saat diklik, HANYA mematikan suara sirine.
+        // Bulatan merah (notif-badge) dibiarkan tetap menyala sesuai instruksi.
+        if (!dropdown.classList.contains('hidden')) {
+            alarmSound.pause();
+            alarmSound.currentTime = 0;
+        }
+    }
+
+    function clearNotif() {
+        document.getElementById('notif-list').innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada notifikasi kritis.</div>';
+    }
+
+    function fetchRealtimeData() {
+        fetch("{{ route('api.realtime') }}")
+            .then(response => response.json())
+            .then(data => {
+                // 1. UPDATE KOTAK PARAMETER SENSOR DI LAYAR SECARA LIVE
+                const sensorCards = document.querySelectorAll('.flex.flex-wrap.gap-5 p');
+                if (sensorCards.length >= 8) {
+                    sensorCards[0].textContent = data.suhu;
+                    sensorCards[1].textContent = data.kelembapan;
+                    sensorCards[2].textContent = data.tekanan;
+                    sensorCards[3].textContent = data.jarak_air;
+                    sensorCards[4].textContent = data.flow;
+                    sensorCards[5].textContent = data.rain_total;
+                    sensorCards[6].textContent = data.rain_rate;
+                    
+                    sensorCards[7].textContent = data.status_level;
+                    if (data.status_level === 'Air Tinggi') {
+                        sensorCards[7].className = "text-[18px] font-bold mt-2 text-red-600 animate-pulse";
+                    } else {
+                        sensorCards[7].className = "text-[18px] font-bold mt-2 text-black";
+                    }
+                }
+
+                // 2. UPDATE KOTAK MONITOR UTAMA "SIAGA X" DI DEKAT MAPS
+                const siagaHeader = document.querySelector('h4.text-black.leading-tight');
+                const siagaSub = document.querySelector('p.text-gray-500');
+                if (siagaHeader && siagaSub) {
+                    siagaHeader.innerHTML = `Siaga ${data.angka_status}`;
+                    if (data.angka_status === 1) {
+                        siagaSub.innerHTML = 'Kondisi: tidak aman';
+                    } else if (data.angka_status === 2) {
+                        siagaSub.innerHTML = 'Kondisi: waspada';
+                    } else {
+                        siagaSub.innerHTML = 'Kondisi: aman';
+                    }
+                }
+
+                const currentSiaga = data.angka_status;
+
+                // 3. ATUR ATURAN KEDIP BULATAN MERAH (NOTIF-BADGE) & ALARM SIRINE
+                const notifBadge = document.getElementById('notif-badge');
+                if (currentSiaga === 1 || currentSiaga === 2) {
+                    // Bulatan merah WAJIB terus muncul/kedip selama status masih Siaga 1 atau 2
+                    notifBadge.classList.remove('hidden');
+                    
+                    // Bunyikan sirine jika status baru saja bergeser naik ke kondisi kritis
+                    if (lastStatusSiaga !== 1 && lastStatusSiaga !== 2) {
+                        alarmSound.loop = true;
+                        alarmSound.play().catch(error => console.log("Audio play blocked by browser setup:", error));
+                    }
+                } else if (currentSiaga === 3 || currentSiaga === 0) {
+                    // Bulatan merah HANYA boleh hilang jika status sudah kembali normal (Siaga 3 atau 0)
+                    notifBadge.classList.add('hidden');
+                    alarmSound.pause();
+                    alarmSound.currentTime = 0;
+                }
+
+                // 4. GENERATE STRUKTUR LIST NOTIFIKASI RIWAYAT 1 MINGGU
+                const notifList = document.getElementById('notif-list');
+                if (data.notif_history && data.notif_history.length > 0) {
+                    let htmlContent = '';
+                    data.notif_history.forEach(item => {
+                        let badgeColor = item.siaga === 1 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700';
+                        htmlContent += `
+                            <div class="p-4 hover:bg-gray-50 transition-colors flex flex-col gap-1 font-['Poppins']">
+                                <div class="flex justify-between items-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeColor}">SIAGA ${item.siaga}</span>
+                                    <span class="text-[10px] text-gray-400">${item.waktu}</span>
+                                </div>
+                                <p class="text-gray-700 font-medium">${item.pesan}</p>
+                            </div>
+                        `;
+                    });
+                    notifList.innerHTML = htmlContent;
+                } else {
+                    notifList.innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada riwayat siaga 1 & 2 dalam 1 minggu terakhir.</div>';
+                }
+
+                lastStatusSiaga = currentSiaga;
+            })
+            .catch(error => console.error("Gagal sinkronisasi data riwayat API:", error));
+    }
+
+    // Interval sinkronisasi disetel 1 menit (60000 milidetik) sesuai ketetapan pembacaan hardware IoT
+    setInterval(fetchRealtimeData, 60000);
+    setTimeout(fetchRealtimeData, 1000);
 </script>
 @endsection
