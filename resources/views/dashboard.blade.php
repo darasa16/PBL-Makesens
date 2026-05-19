@@ -26,11 +26,11 @@
                 <iconify-icon icon="fluent:receipt-sparkles-20-filled" class="text-[#F875AA] text-[35px] shrink-0"></iconify-icon>
                 <span class="text-[20px] sidebar-text whitespace-nowrap">Intelligent Analysis</span>
             </a>
-            <a href="#" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
+                <a href="{{ route('reports') }}" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
                 <iconify-icon icon="mage:chart-fill" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
                 <span class="text-[20px] sidebar-text whitespace-nowrap">Report Management</span>
             </a>
-            <a href="#" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
+            <a href="{{ route('history') }}" class="flex items-center gap-3 p-4 text-[#177FB9] font-bold mb-4">
                 <iconify-icon icon="mdi:file-clock" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
                 <span class="text-[20px] sidebar-text whitespace-nowrap">History & Reports</span>
             </a>
@@ -139,7 +139,7 @@
 
                         <div class="flex flex-col justify-center">
                             <span class="text-[36px] sm:text-[50px] font-bold block leading-none">{{ $bmkgParams['t'] ?? '--' }}°C</span>
-                            <span class="text-[20px] sm:text-[25px] font-medium text-gray-500 mt-1">{{ $bmkgParams['weather_desc'] ?? '--' }}</span>
+                            <span class="text-[20px] sm:text-[20px] font-medium text-gray-500 mt-1">{{ $bmkgParams['weather_desc'] ?? '--' }} di Kalibata</span>
                         </div>
                     </div>
                 </div>
@@ -149,8 +149,27 @@
                 <div class="bg-white rounded-[30px] p-6 h-[160px] flex items-center gap-6 shadow-sm">
                     <iconify-icon icon="si:shield-alert-fill" class="text-[#F875AA] text-[100px] sm:text-[135px] shrink-0"></iconify-icon>
                     <div>
-                        <h4 class="text-[30px] sm:text-[40px] font-bold text-black leading-tight">Siaga 2</h4>
-                        <p class="text-[20px] sm:text-[25px] font-medium text-gray-500">Kondisi: waspada</p>
+                        <h4 class="text-[30px] sm:text-[40px] font-bold text-black leading-tight">
+                            @php
+                                $statusRaw = $latest['prediction_status'] ?? 'Siaga 0';
+                                // Mengambil angka saja dari string di Firebase
+                                $angkaStatus = preg_replace('/[^0-9]/', '', $statusRaw);
+                            @endphp
+                            Siaga {{ !empty($angkaStatus) ? $angkaStatus : '0' }}
+                        </h4>
+
+                        <p class="text-[20px] sm:text-[25px] font-medium text-gray-500">
+                            Kondisi:
+                            @if($angkaStatus == '1')
+                                tidak aman
+                            @elseif($angkaStatus == '2')
+                                kondisi waspada
+                            @elseif($angkaStatus == '3')
+                                aman
+                            @else
+                                aman
+                            @endif
+                        </p>
                     </div>
                 </div>
 

@@ -15,24 +15,24 @@ Route::get('/', function () {
 });
 
 // --- RUTE LOGIN FIREBASE ---
-// Menampilkan halaman login desain Figma kamu
 Route::get('/login', [FirebaseAuthController::class, 'showLogin'])->name('login');
-// Memproses verifikasi Email & Password ke Firebase
 Route::post('/login', [FirebaseAuthController::class, 'login']);
 
 // --- RUTE TERPROTEKSI (HARUS LOGIN) ---
-// Semua rute di dalam grup ini akan dicek oleh satpam 'checkFirebase'
 Route::middleware(['checkFirebase'])->group(function () {
     
-    // Dashboard Utama: Mengambil data sensor dari FloodController
+    // Dashboard Utama
     Route::get('/dashboard', [FloodController::class, 'index'])->name('dashboard');
 
-    // TAMBAHKAN RUTE BARU INI UNTUK INTELLIGENT ANALYSIS
+    // Intelligent Analysis
     Route::get('/analysis', [FloodController::class, 'analysis'])->name('analysis');
+    
+    // Report Management
+    Route::get('/report-management', [FloodController::class, 'reports'])->name('reports');
+    
+    // --- RUTE BARU: HISTORY & REPORTS ---
+    Route::get('/history-reports', [FloodController::class, 'history'])->name('history');
     
     // Rute Logout
     Route::post('/logout', [FirebaseAuthController::class, 'logout'])->name('logout');
 });
-
-// PENTING: Jangan tambahkan require __DIR__.'/auth.php' lagi 
-// agar Laravel tidak memanggil rute MySQL bawaan Breeze.
