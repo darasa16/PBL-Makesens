@@ -99,7 +99,7 @@ class FloodController extends Controller
     {
         $database = Firebase::database();
         
-        // Ambil data 'latest' dari Firebase (jika nanti butuh data sensor real-time di halaman ini)
+        // Ambil data 'latest' dari Firebase
         $latestData = $database->getReference('node1/latest')->getValue();
         $latest = !empty($latestData) ? reset($latestData) : null;
 
@@ -108,10 +108,167 @@ class FloodController extends Controller
         ]);
     }
 
-    // --- FUNGSI BARU: HALAMAN HISTORY & REPORTS (DIREK KE VIEW BARU) ---
+    // --- FUNGSI HALAMAN HISTORY & REPORTS (DEFAULT HARI INI + TAMPIL SEMUA DATA AWAL) ---
     public function history()
     {
-        return view('history-reports');
+        $database = Firebase::database();
+        
+        // 1. Ambil data mentah 'history' dari path node1/history
+        $historyData = $database->getReference('node1/history')->getValue();
+        $historyRaw = is_array($historyData) ? $historyData : [];
+
+        // Pembongkar lapisan UID acak Firebase (7QgVPTH...)
+        if (count($historyRaw) > 0 && !isset(reset($historyRaw)['suhu'])) {
+            $historyRaw = reset($historyRaw); 
+        }
+        $historyRaw = is_array($historyRaw) ? $historyRaw : [];
+
+        // Balik data terbaru ke atas
+        $historyRaw = array_reverse($historyRaw);
+
+        // Set default visual kalender ke tanggal hari ini (WIB)
+        $defaultDate = date('Y-m-d'); 
+
+        if (request()->has('date') && !empty(request()->get('date'))) {
+            $filterDate = request()->get('date');
+            
+            // Jalankan penyaringan murni kalau kamu sudah memilih tanggal
+            $filteredRaw = [];
+            foreach ($historyRaw as $key => $item) {
+                if (is_array($item)) {
+                    $itemTimestamp = $item['timestamp'] ?? '';
+                    if (is_string($itemTimestamp) && str_contains($itemTimestamp, $filterDate)) {
+                        $filteredRaw[$key] = $item;
+                    }
+                }
+            }
+            $historyRaw = $filteredRaw;
+        } else {
+            $filterDate = $defaultDate;
+        }
+
+        // 2. SELEKSI PAGINATION (100 data per halaman)
+        $perPage = 100;
+        $currentPage = request()->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+        
+        $paginatedItems = array_slice($historyRaw, $offset, $perPage);
+
+        $history = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginatedItems, 
+            count($historyRaw), 
+            $perPage, 
+            $currentPage, 
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return view('history-reports', [
+            'historyData' => $history,
+            'filterDate' => $filterDate
+        ]);
+    }
+
+    // --- FUNGSI DOWNLOAD DATA SENSOR MENJADI CSV BERDASARKAN TANGGAL (FIX ANTI-CRASH) ---
+    public function downloadSensorCsv()
+    {
+        $database = Firebase::database();
+        
+        // 1. Ambil data mentah 'history' dari path node1/history
+        $historyData = $database->getReference('node1/history')->getValue();
+        $historyRaw = is_array($historyData) ? $historyData : [];
+
+        // Pembongkar lapisan UID acak Firebase
+        if (count($historyRaw) > 0 && !isset(reset($historyRaw)['suhu'])) {
+            $historyRaw = reset($historyRaw); 
+        }
+        $historyRaw = is_array($historyRaw) ? $historyRaw : [];
+
+        // Urutkan data terbaru ke atas
+        $historyRaw = array_reverse($historyRaw);
+
+        // Cek apakah ada filter tanggal dari parameter link kartu yang diklik
+        $filename = 'sensor_log_all.csv';
+        if (request()->has('date') && !empty(request()->get('date'))) {
+            $filterDate = request()->get('date');
+            $filename = 'sensor_log_' . $filterDate . '.csv';
+            
+            // Lakukan penyaringan data sesuai tanggal
+            $filteredRaw = [];
+            foreach ($historyRaw as $key => $item) {
+                if (is_array($item)) {
+                    $itemTimestamp = $item['timestamp'] ?? '';
+                    if (is_string($itemTimestamp) && str_contains($itemTimestamp, $filterDate)) {
+                        $filteredRaw[$key] = $item;
+                    }
+                }
+            }
+            $historyRaw = $filteredRaw;
+        }
+
+        // 2. PROSES PEMBUATAN FILE CSV SECARA LANGSUNG (STREAM)
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        // Struktur 10 kolom CSV yang pas dan sinkron dengan tabel Sensor Logging kamu
+        $columns = [
+            'No', 
+            'Timestamp', 
+            'Suhu Udara', 
+            'Kelembaban Udara', 
+            'Tekanan Udara', 
+            'Jarak Permukaan Air', 
+            'Laju Aliran Sungai', 
+            'Total Curah Hujan', 
+            'Intensitas Hujan', 
+            'Status Level Air'
+        ];
+
+        $callback = function() use($historyRaw, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns); // Menulis baris header kolom
+
+            $no = 1;
+            foreach ($historyRaw as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                // PROTEKSI KETAT: Mengubah data kosong / bertipe array menjadi string '-' agar PHP tidak crash
+                $timestamp   = isset($item['timestamp']) && !is_array($item['timestamp']) ? $item['timestamp'] : '-';
+                $suhu        = isset($item['suhu']) && !is_array($item['suhu']) ? $item['suhu'] : '-';
+                $kelembapan  = isset($item['kelembapan']) && !is_array($item['kelembapan']) ? $item['kelembapan'] : '-';
+                $tekanan     = isset($item['tekanan']) && !is_array($item['tekanan']) ? $item['tekanan'] : '-';
+                $jarak_air   = isset($item['jarak_air']) && !is_array($item['jarak_air']) ? $item['jarak_air'] : '-';
+                $flow        = isset($item['flow']) && !is_array($item['flow']) ? $item['flow'] : '-';
+                $rain_total  = isset($item['rain_total']) && !is_array($item['rain_total']) ? $item['rain_total'] : '-';
+                $rain_rate   = isset($item['rain_rate']) && !is_array($item['rain_rate']) ? $item['rain_rate'] : '-';
+                
+                $floatLevel  = isset($item['float_level']) && !is_array($item['float_level']) ? $item['float_level'] : '0';
+                $status_level = ($floatLevel == '1') ? 'Air Tinggi' : 'Aman';
+
+                fputcsv($file, [
+                    $no++,
+                    $timestamp,
+                    $suhu,
+                    $kelembapan,
+                    $tekanan,
+                    $jarak_air,
+                    $flow,
+                    $rain_total,
+                    $rain_rate,
+                    $status_level
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     // --- ENDPOINT API UNTUK MENGAMBIL DATA FIREBASE SECARA REAL-TIME + FILTER 1 MINGGU ---
@@ -135,33 +292,34 @@ class FloodController extends Controller
         $historyRaw = !empty($historyData) ? reset($historyData) : [];
 
         $filteredHistory = [];
-        $oneWeekAgo = now()->subDays(7); // Batas dinamis 7 hari ke belakang
+        $oneWeekAgo = now()->subDays(7); 
 
         if (is_array($historyRaw)) {
             foreach ($historyRaw as $item) {
-                // Ekstraksi status siaga dari item history
-                $itemStatusRaw = $item['prediction_status'] ?? $item['status_siaga'] ?? 'Siaga 0';
-                $itemAngkaStatus = intval(preg_replace('/[^0-9]/', '', $itemStatusRaw));
+                if (is_array($item)) {
+                    $itemStatusRaw = $item['prediction_status'] ?? $item['status_siaga'] ?? 'Siaga 0';
+                    $itemAngkaStatus = intval(preg_replace('/[^0-9]/', '', $itemStatusRaw));
 
-                // Ambil string waktu dari data history Firebase (bisa 'timestamp' atau 'datetime' sesuai key database kamu)
-                $itemTimeRaw = $item['timestamp'] ?? $item['datetime'] ?? null;
-                
-                if ($itemTimeRaw) {
-                    $itemTime = \Carbon\Carbon::parse($itemTimeRaw);
+                    $itemTimeRaw = $item['timestamp'] ?? $item['datetime'] ?? null;
                     
-                    // SELEKSI: Harus dalam range 1 minggu terakhir DAN berstatus Siaga 1 atau Siaga 2
-                    if ($itemTime->greaterThanOrEqualTo($oneWeekAgo) && ($itemAngkaStatus === 1 || $itemAngkaStatus === 2)) {
-                        $filteredHistory[] = [
-                            'siaga' => $itemAngkaStatus,
-                            'waktu' => $itemTime->translatedFormat('l, d M Y - H:i') . ' WIB',
-                            'pesan' => "Peringatan: Level air masuk kategori kritis Siaga " . $itemAngkaStatus . "!"
-                        ];
+                    if ($itemTimeRaw) {
+                        try {
+                            $itemTime = \Carbon\Carbon::parse($itemTimeRaw);
+                            if ($itemTime->greaterThanOrEqualTo($oneWeekAgo) && ($itemAngkaStatus === 1 || $itemAngkaStatus === 2)) {
+                                $filteredHistory[] = [
+                                    'siaga' => $itemAngkaStatus,
+                                    'waktu' => $itemTime->translatedFormat('l, d M Y - H:i') . ' WIB',
+                                    'pesan' => "Peringatan: Level air masuk kategori kritis Siaga " . $itemAngkaStatus . "!"
+                                ];
+                            }
+                        } catch (\Exception $e) {
+                            continue;
+                        }
                     }
                 }
             }
         }
 
-        // Balikkan urutan array (reverse) agar data kejadian paling baru ditaruh di atas
         $filteredHistory = array_reverse($filteredHistory);
 
         return response()->json([
@@ -174,7 +332,7 @@ class FloodController extends Controller
             'rain_rate' => ($latest['rain_rate'] ?? '----') . ' mm/h',
             'status_level' => $statusLevel,
             'angka_status' => $angkaStatus,
-            'notif_history' => $filteredHistory // Suplai array riwayat bersih ke JavaScript
+            'notif_history' => $filteredHistory
         ]);
     }
 }

@@ -33,6 +33,13 @@
                 <iconify-icon icon="mdi:file-clock" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
                 <span class="text-[20px] sidebar-text whitespace-nowrap">History & Reports</span>
             </a>
+            <form method="POST" action="{{ route('logout') }}" class="absolute bottom-6 left-0 w-full px-4 pt-4 border-t border-[#FFDFDF]/60">
+                @csrf
+                <button type="submit" class="flex items-center gap-3 p-4 w-full text-[#F875AA] hover:bg-[#F875AA]/20 rounded-[10px] font-bold transition-all duration-200 focus:outline-none">
+                    <iconify-icon icon="streamline-sharp:logout-2-remix" class="text-[32px] shrink-0"></iconify-icon>   
+                    <span class="text-[20px] text-[#177FB9] sidebar-text whitespace-nowrap">Logout</span>
+                 </button>
+            </form>        
         </nav>
     </aside>
 
@@ -85,22 +92,27 @@
             </div>
         </header>
 
-        <div class="bg-white rounded-[30px] p-8 shadow-sm w-full h-auto mb-8">
+        <div class="bg-white rounded-[30px] p-8 shadow-sm w-full h-fit mb-8">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
                 <h2 class="text-[32px] font-bold text-black">Sensor Logging</h2>
-                
-                <div class="flex flex-wrap items-center gap-4 justify-end w-full lg:w-auto">
-                    <div class="flex flex-col">
-                        <label class="text-sm font-bold mb-1 text-black">Node Location</label>
-                        <select class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 w-64 focus:ring-2 focus:ring-[#F875AA]">
-                            <option>Jl. Kalibata Timur IV</option>
-                            <option>Situ Babakan</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col">
-                        <label class="text-sm font-bold mb-1 text-black">Time Period</label>
-                        <input type="date" value="2026-04-30" class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA]">
-                    </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4 mb-8 mt-10 justify-start w-full lg:justify-end">
+                <div class="flex flex-col">
+                    <label class="text-sm font-bold mb-1 text-black">Node Location</label>
+                    <select class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 w-64 focus:ring-2 focus:ring-[#F875AA]">
+                        <option>Jl. Madrasah, Kalibata</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-sm font-bold mb-1 text-black">Time Period</label>
+                    <form id="filter-form" method="GET" action="{{ route('history') }}">
+                        <input type="date" name="date" value="{{ $filterDate }}"
+                               onchange="document.getElementById('filter-form').submit();"
+                               class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA]">
+                    </form>
                 </div>
             </div>
 
@@ -121,47 +133,84 @@
                         </tr>
                     </thead>
                     <tbody class="text-gray-700 font-medium">
-                        @for ($i = 1; $i <= 5; $i++)
+                        @forelse ($historyData as $index => $log)
                         <tr class="border-b hover:bg-gray-50 transition-colors">
-                            <td class="p-4">{{ $i }}</td>
-                            <td class="p-4">2026-04-15 10:00</td>
-                            <td class="p-4">21.5</td>
-                            <td class="p-4">52.7</td>
-                            <td class="p-4">1000.3</td>
-                            <td class="p-4">1989</td>
-                            <td class="p-4">0</td>
-                            <td class="p-4">13.41</td>
-                            <td class="p-4">0</td>
-                            <td class="p-4">0</td>
+                            <td class="p-4">{{ $loop->iteration }}</td>
+                            <td class="p-4">{{ $log['timestamp'] ?? '-' }}</td>
+                            <td class="p-4">{{ $log['suhu'] ?? '-' }} °C</td>
+                            <td class="p-4">{{ $log['kelembapan'] ?? '-' }} %</td>
+                            <td class="p-4">{{ $log['tekanan'] ?? '-' }} hPa</td>
+                            <td class="p-4">{{ $log['jarak_air'] ?? '-' }} cm</td>
+                            <td class="p-4">{{ $log['flow'] ?? '-' }} L/m</td>
+                            <td class="p-4">{{ $log['rain_total'] ?? '-' }} mm</td>
+                            <td class="p-4">{{ $log['rain_rate'] ?? '-' }} mm/h</td>
+                            <td class="p-4">
+                                @if(($log['float_level'] ?? '0') == '1')
+                                    Air Tinggi
+                                @else
+                                    Aman
+                                @endif
+                            </td>
                         </tr>
-                        @endfor
+                        @empty
+                        <tr>
+                            <td colspan="10" class="p-8 text-center text-gray-400 italic">
+                                Belum ada riwayat data sensor log dari Node Firebase.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
-            <div class="flex justify-end mt-4 gap-2">
-                <span class="text-[#F875AA] cursor-pointer">●</span>
-                <span class="text-gray-300 cursor-pointer">●</span>
-            </div>
-        </div>
+            
+            <div class="flex justify-end mt-6 gap-4 items-center">
+                {{-- Tombol Panah Kiri --}}
+                @if ($historyData->onFirstPage())
+                    <span class="text-gray-300 cursor-not-allowed flex items-center justify-center p-2 rounded-lg bg-gray-100">
+                        <iconify-icon icon="mingcute:arrow-left-line" class="text-[24px]"></iconify-icon>
+                    </span>
+                @else
+                    <a href="{{ $historyData->previousPageUrl() }}" class="text-[#F875AA] hover:bg-[#F875AA]/10 flex items-center justify-center p-2 rounded-lg bg-[#FFF6F6] border border-[#FFDFDF] transition-colors">
+                        <iconify-icon icon="mingcute:arrow-left-line" class="text-[24px]"></iconify-icon>
+                    </a>
+                @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-[#FFB1B1] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
-                <div class="bg-white/40 p-3 rounded-xl">
-                    <iconify-icon icon="mdi:file-document-download" class="text-white text-[40px]"></iconify-icon>
-                </div>
-                <span class="text-white font-bold text-[18px] leading-tight">Download Technical<br>Sensor Log</span>
+                {{-- Indikator Teks Halaman --}}
+                <span class="text-sm font-bold text-gray-600 font-['Poppins']">
+                    Halaman {{ $historyData->currentPage() }} dari {{ $historyData->lastPage() }}
+                </span>
+
+                {{-- Tombol Panah Kanan --}}
+                @if ($historyData->hasMorePages())
+                    <a href="{{ $historyData->nextPageUrl() }}" class="text-[#F875AA] hover:bg-[#F875AA]/10 flex items-center justify-center p-2 rounded-lg bg-[#FFF6F6] border border-[#FFDFDF] transition-colors">
+                        <iconify-icon icon="mingcute:arrow-right-line" class="text-[24px]"></iconify-icon>
+                    </a>
+                @else
+                    <span class="text-gray-300 cursor-not-allowed flex items-center justify-center p-2 rounded-lg bg-gray-100">
+                        <iconify-icon icon="mingcute:arrow-right-line" class="text-[24px]"></iconify-icon>
+                    </span>
+                @endif
             </div>
-            <div class="bg-[#F875AA] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+        </div> <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a href="{{ route('download.sensor.csv', ['date' => request()->get('date')]) }}" class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform no-underline text-black">
                 <div class="bg-white/40 p-3 rounded-xl">
-                    <iconify-icon icon="ph:file-pdf-fill" class="text-white text-[40px]"></iconify-icon>
+                    <iconify-icon icon="flowbite:file-csv-solid" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
-                <span class="text-white font-bold text-[18px] leading-tight">Download Management<br>Summary</span>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Technical<br>Sensor Log</span>
+            </a>
+            
+            <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                <div class="bg-white/40 p-3 rounded-xl">
+                    <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
+                </div>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Management<br>Summary</span>
             </div>
-            <div class="bg-[#177FB9] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+            
+            <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
                 <div class="bg-white/40 p-3 rounded-xl">
-                    <iconify-icon icon="carbon:report" class="text-white text-[40px]"></iconify-icon>
+                    <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
-                <span class="text-white font-bold text-[18px] leading-tight">Download Comprehensive<br>Master Report</span>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Comprehensive<br>Master Report</span>
             </div>
         </div>
 
@@ -171,7 +220,6 @@
 <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
 
 <script>
-    // Script Sidebar & Jam (Konsisten 100%)
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('main-content');
@@ -208,9 +256,6 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // ==========================================
-    // SINKRONISASI LOGIKA NOTIFIKASI REAL-TIME (KEMBAR DASHBOARD)
-    // ==========================================
     const alarmSound = new Audio("{{ asset('audio/sirine.mp3') }}");
     let lastStatusSiaga = 0; 
 
@@ -218,7 +263,6 @@
         const dropdown = document.getElementById('notif-dropdown');
         dropdown.classList.toggle('hidden');
         
-        // Sesuai aturan: Hanya mematikan suara sirine saat diklik. Kedipan badge merah jangan hilang.
         if (!dropdown.classList.contains('hidden')) {
             alarmSound.pause();
             alarmSound.currentTime = 0;
@@ -235,7 +279,6 @@
             .then(data => {
                 const currentSiaga = data.angka_status;
 
-                // ATUR KEDIP BULATAN MERAH (NOTIF-BADGE) & SIRINE AUDIO
                 const notifBadge = document.getElementById('notif-badge');
                 if (currentSiaga === 1 || currentSiaga === 2) {
                     notifBadge.classList.remove('hidden');
@@ -250,7 +293,6 @@
                     alarmSound.currentTime = 0;
                 }
 
-                // RENDER DAFTAR RIWAYAT NOTIFIKASI 1 MINGGU
                 const notifList = document.getElementById('notif-list');
                 if (data.notif_history && data.notif_history.length > 0) {
                     let htmlContent = '';
@@ -276,7 +318,6 @@
             .catch(error => console.error("Gagal sinkronisasi data riwayat API di halaman History Reports:", error));
     }
 
-    // Interval pooling disamakan 1 menit sekali (60000 ms) agar sinkron penuh di semua halaman web
     setInterval(fetchRealtimeNotification, 60000);
     setTimeout(fetchRealtimeNotification, 1000);
 </script>

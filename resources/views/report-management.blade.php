@@ -34,9 +34,16 @@
                 <iconify-icon icon="mdi:file-clock" class="text-[#F875AA] text-[32px] shrink-0"></iconify-icon>
                 <span class="text-[20px] sidebar-text whitespace-nowrap">History & Reports</span>
             </a>
-        </nav>
+            <form method="POST" action="{{ route('logout') }}" class="absolute bottom-6 left-0 w-full px-4 pt-4 border-t border-[#FFDFDF]/60">
+                @csrf
+                <button type="submit" class="flex items-center gap-3 p-4 w-full text-[#F875AA] hover:bg-[#F875AA]/20 rounded-[10px] font-bold transition-all duration-200 focus:outline-none">
+                    <iconify-icon icon="streamline-sharp:logout-2-remix" class="text-[32px] shrink-0"></iconify-icon>   
+                    <span class="text-[20px] text-[#177FB9] sidebar-text whitespace-nowrap">Logout</span>
+                 </button>
+            </form>        
+            </nav>
     </aside>
-
+    
     <main id="main-content" class="flex-1 ml-0 lg:ml-[322px] pt-4 px-4 lg:px-10 pb-10 transition-all duration-300 w-full overflow-x-hidden">
         
         <header class="flex flex-col gap-4 sm:flex-row justify-between items-start sm:items-center mb-8 lg:mb-12">
@@ -130,8 +137,8 @@
                 <div class="flex flex-col">
                     <label class="text-sm font-bold mb-1 text-black">Node Location</label>
                     <select class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA] w-72">
-                        <option>Jl. Kalibata Timur IV</option>
-                        <option>Situ Babakan</option>
+                        <option>Jl. Madrasah, Kalibata</option>
+                        <option>Other</option>
                     </select>
                 </div>
                 <div class="flex flex-col">
