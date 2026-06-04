@@ -174,7 +174,7 @@
     <div class="form-section">
         <div class="form-container">
             <h1 class="font-semibold text-[clamp(36px,4vw,50px)] text-[#177FB9] leading-tight m-0">Log In</h1>
-            <p class="text-[clamp(18px,2vw,30px)] text-black mt-2 mb-8 m-0">Here you log in securely</p>
+            <p class="text-[clamp(18px,2vw,22px)] text-black mt-2 mb-8 m-0">Di sini Anda dapat masuk dengan aman.</p>
 
             @if ($errors->any())
                 <div class="error-text">

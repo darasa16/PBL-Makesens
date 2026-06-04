@@ -94,12 +94,12 @@
 
         <div class="bg-white rounded-[30px] p-8 shadow-sm w-full h-fit mb-8">
             <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
-                <h2 class="text-[32px] font-bold text-black">Sensor Logging</h2>
+                <h2 class="text-[32px] font-bold text-black">Log Sensor</h2>
             </div>
 
             <div class="flex flex-wrap items-center gap-4 mb-8 mt-10 justify-start w-full lg:justify-end">
                 <div class="flex flex-col">
-                    <label class="text-sm font-bold mb-1 text-black">Node Location</label>
+                    <label class="text-sm font-bold mb-1 text-black">Node Lokasi</label>
                     <select class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 w-64 focus:ring-2 focus:ring-[#F875AA]">
                         <option>Jl. Madrasah, Kalibata</option>
                         <option>Other</option>
@@ -107,7 +107,7 @@
                 </div>
 
                 <div class="flex flex-col">
-                    <label class="text-sm font-bold mb-1 text-black">Time Period</label>
+                    <label class="text-sm font-bold mb-1 text-black">Waktu</label>
                     <form id="filter-form" method="GET" action="{{ route('history') }}">
                         <input type="date" name="date" value="{{ $filterDate }}"
                                onchange="document.getElementById('filter-form').submit();"
@@ -121,7 +121,7 @@
                     <thead>
                         <tr class="bg-[#AEDEFC]/20 text-black font-bold">
                             <th class="p-4 border-b">No</th>
-                            <th class="p-4 border-b">Timestamp</th>
+                            <th class="p-4 border-b">Waktu</th>
                             <th class="p-4 border-b">Suhu Udara</th>
                             <th class="p-4 border-b">Kelembaban Udara</th>
                             <th class="p-4 border-b">Tekanan Udara</th>
@@ -155,7 +155,7 @@
                         @empty
                         <tr>
                             <td colspan="10" class="p-8 text-center text-gray-400 italic">
-                                Belum ada riwayat data sensor log dari Node Firebase.
+                                Belum ada riwayat data sensor log dari Sensor Node.
                             </td>
                         </tr>
                         @endforelse
@@ -196,21 +196,21 @@
                 <div class="bg-white/40 p-3 rounded-xl">
                     <iconify-icon icon="flowbite:file-csv-solid" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
-                <span class="text-black font-medium text-[18px] leading-tight">Download Technical<br>Sensor Log</span>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Sensor Log</span>
             </a>
             
             <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
                 <div class="bg-white/40 p-3 rounded-xl">
                     <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
-                <span class="text-black font-medium text-[18px] leading-tight">Download Management<br>Summary</span>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Pengelolaan<br>Laporan</span>
             </div>
             
             <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
                 <div class="bg-white/40 p-3 rounded-xl">
                     <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
-                <span class="text-black font-medium text-[18px] leading-tight">Download Comprehensive<br>Master Report</span>
+                <span class="text-black font-medium text-[18px] leading-tight">Download Laporan<br>Sensor & Keluhan</span>
             </div>
         </div>
 

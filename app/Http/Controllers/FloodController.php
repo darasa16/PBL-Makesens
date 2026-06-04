@@ -95,16 +95,23 @@ class FloodController extends Controller
     }
 
     // --- RUTE BARU: FUNGSI HALAMAN REPORT MANAGEMENT ---
-    public function reports()
+   public function reports()
     {
         $database = Firebase::database();
         
-        // Ambil data 'latest' dari Firebase
         $latestData = $database->getReference('node1/latest')->getValue();
         $latest = !empty($latestData) ? reset($latestData) : null;
 
+        $reportsData = $database->getReference('laporan_keluhan')->getValue();
+        
+        $reports = is_array($reportsData) ? $reportsData : [];
+        
+        // FIX UTAMA: Tambahkan 'true' agar Key/ID Firebase tidak kere-reset!
+        $reports = array_reverse($reports, true); 
+
         return view('report-management', [
-            'latest' => $latest
+            'latest' => $latest,
+            'reports' => $reports 
         ]);
     }
 
@@ -334,5 +341,26 @@ class FloodController extends Controller
             'angka_status' => $angkaStatus,
             'notif_history' => $filteredHistory
         ]);
+    }
+
+    // 🌟 FUNGSI BARU UNTUK MENYIMPAN PERUBAHAN STATUS LAPORAN KE FIREBASE 🌟
+    public function updateReportStatus(Request $request)
+    {
+        $database = Firebase::database();
+        
+        // Ambil ID laporan (key) dan status baru dari request web
+        $reportId = $request->id;
+        $newStatus = $request->status;
+
+        if ($reportId && $newStatus) {
+            // Update node status di dalam laporan_keluhan/UID
+            $database->getReference('laporan_keluhan/' . $reportId)->update([
+                'status' => $newStatus
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Status berhasil disimpan!']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Gagal menyimpan status.'], 400);
     }
 }

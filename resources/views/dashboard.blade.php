@@ -194,7 +194,7 @@
                 <div class="bg-[#177FB9] rounded-[30px] p-6 h-[350px] sm:h-[520px] flex flex-col shadow-sm flex-1">
                     <div class="flex items-center gap-2 mb-4">
                         <iconify-icon icon="mdi:location" class="text-white text-[28px]"></iconify-icon>
-                        <h4 class="text-white text-[25px] font-bold">Node Location</h4>
+                        <h4 class="text-white text-[25px] font-bold">Lokasi Node</h4>
                     </div>
                     <div class="flex-1 bg-white rounded-[10px] border-[8px] border-[#177FB9] overflow-hidden">
                         <iframe 

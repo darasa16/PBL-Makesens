@@ -153,7 +153,7 @@
 
     <div class="right-content">
         <h1 class="welcome-title">Welcome MakeSens!</h1>
-        <p class="welcome-subtitle">Do You Have An Account?</p>
+        <p class="welcome-subtitle">Apakah Anda memiliki akun?</p>
 
         @if (Route::has('login'))
             @auth

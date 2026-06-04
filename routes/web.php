@@ -30,6 +30,9 @@ Route::middleware(['checkFirebase'])->group(function () {
     // Report Management
     Route::get('/report-management', [FloodController::class, 'reports'])->name('reports');
     
+    // 🌟 RUTE BARU: UPDATE STATUS LAPORAN (POST) 🌟
+    Route::post('/update-report-status', [FloodController::class, 'updateReportStatus'])->name('report.updateStatus');
+    
     // --- RUTE BARU: HISTORY & REPORTS ---
     Route::get('/history-reports', [FloodController::class, 'history'])->name('history');
     
