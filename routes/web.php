@@ -38,6 +38,12 @@ Route::middleware(['checkFirebase'])->group(function () {
     
     // --- PENYESUAIAN BARU: RUTE DOWNLOAD TECHNICAL SENSOR LOG (CSV) ---
     Route::get('/download-sensor-csv', [FloodController::class, 'downloadSensorCsv'])->name('download.sensor.csv');
+
+    // --- RUTE BARU: DOWNLOAD PENGELOLAAN LAPORAN (PDF) ---
+    Route::get('/download-report-pdf', [FloodController::class, 'downloadReportPdf'])->name('download.report.pdf');
+
+    // --- RUTE DOWNLOAD GABUNGAN SENSOR & LAPORAN (CSV) ---
+    Route::get('/download-combined-csv', [FloodController::class, 'downloadCombinedCsv'])->name('download.combined.csv');
     
     // --- RUTE PENDUKUNG: API DATA REAL-TIME ---
     Route::get('/api/realtime-flood', [FloodController::class, 'getRealtimeData'])->name('api.realtime');

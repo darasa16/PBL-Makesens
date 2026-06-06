@@ -88,30 +88,21 @@
                 </span>    
                 <div class="w-[50px] h-[50px] sm:w-[70px] sm:h-[70px] rounded-full shadow-sm overflow-hidden bg-gray-200">
                     <img src="https://ui-avatars.com/api/?name={{ urlencode(session('firebase_user.nama') ?? session('firebase_user.name') ?? 'User') }}&background=F875AA&color=fff"
-                         alt="Profile"
-                         class="w-full h-full object-cover">
+                         alt="Profile" class="w-full h-full object-cover">
                 </div>
             </div>
         </header>
 
         @php
-            $jmlTotal = 0;
-            $jmlTertunda = 0;
-            $jmlProses = 0;
-            $jmlSelesai = 0;
-
+            $jmlTotal = 0; $jmlTertunda = 0; $jmlProses = 0; $jmlSelesai = 0;
             if (!empty($reports) && is_array($reports)) {
                 $jmlTotal = count($reports);
                 foreach ($reports as $item) {
                     if (is_array($item)) {
                         $status = $item['status'] ?? 'pending';
-                        if ($status === 'process') {
-                            $jmlProses++;
-                        } elseif ($status === 'complete') {
-                            $jmlSelesai++;
-                        } else {
-                            $jmlTertunda++;
-                        }
+                        if ($status === 'process') $jmlProses++;
+                        elseif ($status === 'complete') $jmlSelesai++;
+                        else $jmlTertunda++;
                     }
                 }
             }
@@ -123,7 +114,7 @@
                     <h4 class="text-[18px] font-bold text-black leading-snug">Total Laporan</h4>
                     <iconify-icon icon="ph:scroll-fill" class="text-[#F875AA] text-[30px] shrink-0"></iconify-icon>
                 </div>
-                <p class="text-[48px] font-bold text-black leading-none">{{ $jmlTotal }}</p>
+                <p id="count-total" class="text-[48px] font-bold text-black leading-none">{{ $jmlTotal }}</p>
             </div>
 
             <div class="bg-white rounded-[30px] p-6 shadow-sm flex flex-col justify-between min-h-[140px]">
@@ -131,7 +122,7 @@
                     <h4 class="text-[18px] font-bold text-black leading-snug">Laporan Tertunda</h4>
                     <iconify-icon icon="mdi:clock" class="text-[#F875AA] text-[30px] shrink-0"></iconify-icon>
                 </div>
-                <p class="text-[48px] font-bold text-black leading-none">{{ $jmlTertunda }}</p>
+                <p id="count-pending" class="text-[48px] font-bold text-black leading-none">{{ $jmlTertunda }}</p>
             </div>
 
             <div class="bg-white rounded-[30px] p-6 shadow-sm flex flex-col justify-between min-h-[140px]">
@@ -139,7 +130,7 @@
                     <h4 class="text-[18px] font-bold text-black leading-snug">Laporan Terproses</h4>
                     <iconify-icon icon="uim:process" class="text-[#F875AA] text-[30px] shrink-0"></iconify-icon>
                 </div>
-                <p class="text-[48px] font-bold text-black leading-none">{{ $jmlProses }}</p>
+                <p id="count-process" class="text-[48px] font-bold text-black leading-none">{{ $jmlProses }}</p>
             </div>
 
             <div class="bg-white rounded-[30px] p-6 shadow-sm flex flex-col justify-between min-h-[140px]">
@@ -147,7 +138,7 @@
                     <h4 class="text-[18px] font-bold text-black leading-snug">Laporan Selesai</h4>
                     <iconify-icon icon="fluent-mdl2:completed-solid" class="text-[#F875AA] text-[30px] shrink-0"></iconify-icon>
                 </div>
-                <p class="text-[48px] font-bold text-black leading-none">{{ $jmlSelesai }}</p>
+                <p id="count-complete" class="text-[48px] font-bold text-black leading-none">{{ $jmlSelesai }}</p>
             </div>
         </div>
 
@@ -161,12 +152,12 @@
                     <label class="text-sm font-bold mb-1 text-black">Node Lokasi</label>
                     <select class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA] w-72">
                         <option>Jl. Madrasah, Kalibata</option>
-                        <option>Other</option>
+                        <option>Lainnya</option>
                     </select>
                 </div>
                 <div class="flex flex-col">
                     <label class="text-sm font-bold mb-1 text-black">Waktu</label>
-                    <input type="date" value="2026-05-18" class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA]">
+                    <input type="date" id="filter-date" value="{{ now()->format('Y-m-d') }}" onchange="filterByDate()" class="border-2 border-[#F875AA] rounded-lg px-4 py-2 font-medium text-gray-700 focus:ring-2 focus:ring-[#F875AA]">
                 </div>
             </div>
 
@@ -178,17 +169,17 @@
                             <th class="p-4 font-bold text-black border-b">Nama</th>
                             <th class="p-4 font-bold text-black border-b">Waktu</th>
                             <th class="p-4 font-bold text-black border-b">Lokasi</th>
-                            <th class="p-4 font-bold text-black border-b">Deskripsi</th>
-                            <th class="p-4 font-bold text-black border-b">Harga</th>
+                            <th class="p-4 font-bold text-black border-b">Deskripsi Keluhan</th>
+                            <th class="p-4 font-bold text-black border-b">Kerugian Banjir</th>
                             <th class="p-4 font-bold text-black border-b">Status</th>
                         </tr>
                     </thead>
-                    <tbody class="text-gray-700 font-medium">
+                    <tbody id="report-tbody" class="text-gray-700 font-medium">
                         @if(!empty($reports) && count($reports) > 0)
                             @php $no = 1; @endphp
                             @foreach($reports as $key => $item)
                                 @if(is_array($item))
-                                    <tr class="border-b hover:bg-gray-50 transition-colors">
+                                    <tr class="border-b hover:bg-gray-50 transition-colors report-row">
                                         <td class="p-4">{{ str_pad($no++, 3, '0', STR_PAD_LEFT) }}</td>
                                         <td class="p-4">{{ $item['nama_pelapor'] ?? '-' }}</td>
                                         <td class="p-4">{{ $item['tanggal_kejadian'] ?? '-' }}</td>
@@ -200,11 +191,11 @@
                                         <td class="p-4">
                                             @php
                                                 $statusValue = $item['status'] ?? 'pending';
-                                                $selectClass = 'bg-[#FF7D7D] text-white'; // Default Tertunda
+                                                $selectClass = 'bg-[#FF7D7D] text-white'; 
                                                 if ($statusValue === 'process') {
-                                                    $selectClass = 'bg-[#FFD07D] text-[#63451D]'; // Proses
+                                                    $selectClass = 'bg-[#FFD07D] text-[#63451D]'; 
                                                 } elseif ($statusValue === 'complete') {
-                                                    $selectClass = 'bg-[#7DFF7D] text-[#1D631D]'; // Selesai
+                                                    $selectClass = 'bg-[#7DFF7D] text-[#1D631D]'; 
                                                 }
                                             @endphp
                                             <select onchange="changeStatus(this, '{{ $key }}')" class="{{ $selectClass }} w-[140px] text-center px-2 py-1 rounded-lg text-sm font-bold border-none cursor-pointer focus:ring-2 focus:ring-[#F875AA]">
@@ -255,7 +246,6 @@
         }
     }
 
-    // Jam Digital Real-time
     function updateClock() {
         const now = new Date();
         const display = document.getElementById('time-display');
@@ -268,10 +258,8 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Mengubah warna background dan teks dropdown secara dinamis
     function updateStatusColor(selectElement) {
         const value = selectElement.value;
-        
         selectElement.className = "w-[140px] text-center px-2 py-1 rounded-lg text-sm font-bold border-none cursor-pointer focus:ring-2 focus:ring-[#F875AA]";
         
         if (value === 'pending') {
@@ -283,10 +271,98 @@
         }
     }
 
-    // Fungsi mengubah status laporan
+    // Fungsi Filter Tanggal Tabel 
+    function filterByDate() {
+        const selectedDate = document.getElementById('filter-date').value; 
+        const rows = document.querySelectorAll('.report-row');
+
+        const months = {
+            'jan': '01', 'januari': '01', 'january': '01',
+            'feb': '02', 'februari': '02', 'february': '02',
+            'mar': '03', 'maret': '03', 'march': '03',
+            'apr': '04', 'april': '04',
+            'mei': '05', 'may': '05',
+            'jun': '06', 'juni': '06', 'june': '06',
+            'jul': '07', 'juli': '07', 'july': '07',
+            'agu': '08', 'agustus': '08', 'august': '08', 'aug': '08',
+            'sep': '09', 'september': '09',
+            'okt': '10', 'oktober': '10', 'october': '10', 'oct': '10',
+            'nov': '11', 'november': '11',
+            'des': '12', 'desember': '12', 'december': '12', 'dec': '12'
+        };
+
+        let visibleTotal = 0;
+
+        rows.forEach(row => {
+            let waktuDariTabel = row.cells[2].innerText.trim().toLowerCase(); 
+            let formattedTabel = waktuDariTabel;
+
+            const parts = waktuDariTabel.split(/[\s\-\/]+/);
+            
+            if (parts.length === 3) {
+                let day = parts[0].padStart(2, '0');
+                let month = months[parts[1]] || parts[1].padStart(2, '0'); 
+                let year = parts[2];
+                formattedTabel = `${year}-${month}-${day}`; 
+            }
+
+            if (formattedTabel === selectedDate || selectedDate === '') {
+                row.style.display = '';
+                visibleTotal++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        let emptyMsg = document.getElementById('empty-date-msg');
+        if (visibleTotal === 0 && rows.length > 0) {
+            if (!emptyMsg) {
+                document.getElementById('report-tbody').insertAdjacentHTML('beforeend', '<tr id="empty-date-msg"><td colspan="7" class="p-4 text-center text-gray-400 italic">Tidak ada laporan pada tanggal ini.</td></tr>');
+            } else {
+                emptyMsg.style.display = '';
+            }
+        } else if (emptyMsg) {
+            emptyMsg.style.display = 'none';
+        }
+    }
+
+    function updateGlobalCards() {
+        const rows = document.querySelectorAll('.report-row');
+        let total = rows.length;
+        let pending = 0;
+        let process = 0;
+        let complete = 0;
+
+        rows.forEach(row => {
+            const selectElement = row.querySelector('select');
+            if (selectElement) {
+                const status = selectElement.value;
+                if (status === 'pending') pending++;
+                else if (status === 'process') process++;
+                else if (status === 'complete') complete++;
+            }
+        });
+
+        const countTotalEl = document.getElementById('count-total');
+        if(countTotalEl) countTotalEl.innerText = total;
+        
+        const countPendingEl = document.getElementById('count-pending');
+        if(countPendingEl) countPendingEl.innerText = pending;
+        
+        const countProcessEl = document.getElementById('count-process');
+        if(countProcessEl) countProcessEl.innerText = process;
+        
+        const countCompleteEl = document.getElementById('count-complete');
+        if(countCompleteEl) countCompleteEl.innerText = complete;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    });
+
     function changeStatus(selectElement, reportId) {
         updateStatusColor(selectElement);
         const newStatus = selectElement.value;
+        updateGlobalCards();
 
         fetch("{{ route('report.updateStatus') }}", {
             method: 'POST',
@@ -294,34 +370,18 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                id: reportId,
-                status: newStatus
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.success) {
-                console.log('Status berhasil disimpan permanen ke database.');
-                // Update hitungan di kartu atas tanpa harus refresh halaman (opsional)
-                // Ini akan langsung memicu penghitungan ulang otomatis dari server saat halaman di-refresh berikutnya
-            }
-        })
-        .catch(error => {
-            console.error("Gagal menyimpan ke database:", error);
-        });
+            body: JSON.stringify({ id: reportId, status: newStatus })
+        }).then(response => response.json())
+          .then(data => { if(data.success) console.log('Status berhasil disimpan!'); })
+          .catch(error => console.error("Gagal menyimpan ke database:", error));
     }
 
-    // ==========================================
-    // SINKRONISASI LOGIKA NOTIFIKASI REAL-TIME
-    // ==========================================
     const alarmSound = new Audio("{{ asset('audio/sirine.mp3') }}");
     let lastStatusSiaga = 0; 
 
     function toggleNotificationDropdown() {
         const dropdown = document.getElementById('notif-dropdown');
         dropdown.classList.toggle('hidden');
-        
         if (!dropdown.classList.contains('hidden')) {
             alarmSound.pause();
             alarmSound.currentTime = 0;
@@ -337,11 +397,9 @@
             .then(response => response.json())
             .then(data => {
                 const currentSiaga = data.angka_status;
-
                 const notifBadge = document.getElementById('notif-badge');
                 if (currentSiaga === 1 || currentSiaga === 2) {
                     notifBadge.classList.remove('hidden');
-                    
                     if (lastStatusSiaga !== 1 && lastStatusSiaga !== 2) {
                         alarmSound.loop = true;
                         alarmSound.play().catch(error => console.log("Audio play blocked by browser setup:", error));
@@ -371,7 +429,6 @@
                 } else {
                     notifList.innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada riwayat siaga 1 & 2 dalam 1 minggu terakhir.</div>';
                 }
-
                 lastStatusSiaga = currentSiaga;
             })
             .catch(error => console.error("Gagal sinkronisasi data riwayat API:", error));

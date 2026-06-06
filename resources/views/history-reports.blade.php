@@ -117,7 +117,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[1200px]">
+                <table class="w-full text-left border-collapse min-w-[1600px]">
                     <thead>
                         <tr class="bg-[#AEDEFC]/20 text-black font-bold">
                             <th class="p-4 border-b">No</th>
@@ -130,6 +130,11 @@
                             <th class="p-4 border-b">Total Curah Hujan</th>
                             <th class="p-4 border-b">Intensitas Hujan</th>
                             <th class="p-4 border-b">Status Level Air</th>
+                            <th class="p-4 border-b">CPU</th>
+                            <th class="p-4 border-b">Disk Terpakai</th>
+                            <th class="p-4 border-b">Rata Rata Load 5 Menit</th>
+                            <th class="p-4 border-b">Memori Terpakai</th>
+                            <th class="p-4 border-b">RSSI</th>
                         </tr>
                     </thead>
                     <tbody class="text-gray-700 font-medium">
@@ -151,10 +156,15 @@
                                     Aman
                                 @endif
                             </td>
+                            <td class="p-4">{{ $log['cpu_percent'] ?? '-' }} %</td>
+                            <td class="p-4">{{ $log['disk_used_gb'] ?? '-' }} GB</td>
+                            <td class="p-4">{{ $log['load_avg_5min'] ?? '-' }}</td>
+                            <td class="p-4">{{ $log['memory_used_mb'] ?? '-' }} MB</td>
+                            <td class="p-4">{{ $log['rssi'] ?? '-' }} dBm</td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="p-8 text-center text-gray-400 italic">
+                            <td colspan="15" class="p-8 text-center text-gray-400 italic">
                                 Belum ada riwayat data sensor log dari Sensor Node.
                             </td>
                         </tr>
@@ -191,27 +201,29 @@
                     </span>
                 @endif
             </div>
-        </div> <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <a href="{{ route('download.sensor.csv', ['date' => request()->get('date')]) }}" class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform no-underline text-black">
+        </div> 
+        
+       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a id="card-download-sensor" href="{{ route('download.sensor.csv', ['date' => request()->get('date')]) }}" class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform no-underline text-black">
                 <div class="bg-white/40 p-3 rounded-xl">
                     <iconify-icon icon="flowbite:file-csv-solid" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
                 <span class="text-black font-medium text-[18px] leading-tight">Download Sensor Log</span>
             </a>
             
-            <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+            <a id="card-download-pdf" href="{{ route('download.report.pdf', ['date' => request()->get('date')]) }}" class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform no-underline text-black">
                 <div class="bg-white/40 p-3 rounded-xl">
                     <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
                 <span class="text-black font-medium text-[18px] leading-tight">Download Pengelolaan<br>Laporan</span>
-            </div>
+            </a>
             
-            <div class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+            <a id="card-download-combined" href="{{ route('download.combined.csv', ['date' => request()->get('date')]) }}" class="bg-[#FFFFFF] rounded-[20px] p-6 flex items-center gap-4 shadow-sm cursor-pointer hover:scale-105 transition-transform no-underline text-black">
                 <div class="bg-white/40 p-3 rounded-xl">
-                    <iconify-icon icon="mingcute:pdf-fill" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
+                    <iconify-icon icon="flowbite:file-csv-solid" style="color: #F875AA;" class="text-[60px]"></iconify-icon>
                 </div>
                 <span class="text-black font-medium text-[18px] leading-tight">Download Laporan<br>Sensor & Keluhan</span>
-            </div>
+            </a>
         </div>
 
     </main>

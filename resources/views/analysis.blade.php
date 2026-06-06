@@ -88,7 +88,6 @@
                 <span class="text-[18px] sm:text-[22px] font-medium text-black">
                     Hai, {{ session('firebase_user.nama') ?? session('firebase_user.name') ?? 'User' }}
                 </span>    
-
                 <div class="w-[50px] h-[50px] sm:w-[70px] sm:h-[70px] rounded-full shadow-sm overflow-hidden bg-gray-200">
                     <img src="https://ui-avatars.com/api/?name={{ urlencode(session('firebase_user.nama') ?? session('firebase_user.name') ?? 'User') }}&background=F875AA&color=fff"
                          alt="Profile"
@@ -99,7 +98,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-[40px] mb-[40px] w-full items-stretch">
             
-            <div class="lg:col-span-2 flex flex-col gap-[40px]">
+            <div class="lg:col-span-2 flex flex-col gap-[40px] h-fit">
                 <div class="bg-white rounded-[30px] p-8 shadow-sm flex flex-col min-h-[480px] w-full">
                     <div class="flex items-center gap-2 mb-3">
                         <h4 class="text-[22px] font-bold text-black -mt-[3px]">Ketinggian Air</h4>
@@ -108,12 +107,13 @@
                         <span class="w-3 h-3 bg-[#177FB9] rounded-full"></span>
                         <p class="text-gray-500 font-medium">Sensor Water Level</p>
                     </div>
-                    <div class="flex-1 w-full relative min-h-[300px]">
-                        <canvas id="waterLevelChart" class="w-full h-full"></canvas>
+                    <!-- WADAH GRAFIK DIPERBAIKI (Tinggi Dikunci 300px) -->
+                    <div class="w-full relative h-[300px]">
+                        <canvas id="waterLevelChart"></canvas>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-[30px] p-8 shadow-sm flex flex-row items-center min-h-[160px] h-full w-full gap-4">
+                <div class="bg-white rounded-[30px] p-8 shadow-sm flex flex-row items-center min-h-[160px] w-full gap-4">
                     <div class="flex flex-col flex-1">
                         <h4 class="text-[22px] font-bold text-black -mt-[15px] mb-4">Diagnosis Penyebab Banjir</h4> 
                         <p class="text-[17px] text-gray-600 leading-relaxed">
@@ -206,13 +206,11 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    // Logic Sidebar Collapse
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('main-content');
         const sidebarHeader = document.getElementById('sidebar-header');
         const texts = document.querySelectorAll('.sidebar-text');
-
         const isMobile = window.innerWidth < 1024;
 
         if (isMobile) {
@@ -238,7 +236,6 @@
         }
     }
 
-    // Jam Digital Real-time
     function updateClock() {
         const now = new Date();
         const display = document.getElementById('time-display');
@@ -251,14 +248,12 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // --- SINKRONISASI DATA GRAFIK STRUKTUR FIXED 24 JAM (ASLI MILIK KAMU - OVERWRITE MODE) ---
     const fixedLabels = [
         '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', 
         '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '23:59'
     ];
 
     let chartWaterLevels = new Array(fixedLabels.length).fill(null);
-
     const todayDateStr = "{{ now()->format('Y-m-d') }}";
     const historyData = @json($history ?? []);
 
@@ -266,16 +261,11 @@
         Object.values(historyData).forEach(item => {
             if (item.timestamp && item.timestamp.length >= 10) {
                 let itemDate = item.timestamp.substring(0, 10);
-
                 if (itemDate === todayDateStr) {
                     let hourStr = item.timestamp.substring(11, 13); 
                     let hourIndex = parseInt(hourStr, 10);
-
-                    if (hourStr === "23") {
-                        chartWaterLevels[24] = item.jarak_air ?? 0;
-                    } else if (hourIndex >= 0 && hourIndex < 23) {
-                        chartWaterLevels[hourIndex] = item.jarak_air ?? 0;
-                    }
+                    if (hourStr === "23") chartWaterLevels[24] = item.jarak_air ?? 0;
+                    else if (hourIndex >= 0 && hourIndex < 23) chartWaterLevels[hourIndex] = item.jarak_air ?? 0;
                 }
             }
         });
@@ -284,20 +274,87 @@
     const latestData = @json($latest ?? []);
     if (latestData && latestData.timestamp && latestData.timestamp.length >= 10) {
         let latestDate = latestData.timestamp.substring(0, 10);
-
         if (latestDate === todayDateStr) {
             let latestHourStr = latestData.timestamp.substring(11, 13);
             let latestHourIndex = parseInt(latestHourStr, 10);
-            
-            if (latestHourStr === "23") {
-                if (chartWaterLevels[24] === null) chartWaterLevels[24] = latestData.jarak_air ?? 0;
-            } else if (latestHourIndex >= 0 && latestHourIndex < 23) {
-                if (chartWaterLevels[latestHourIndex] === null) chartWaterLevels[latestHourIndex] = latestData.jarak_air ?? 0;
-            }
+            if (latestHourStr === "23") { if (chartWaterLevels[24] === null) chartWaterLevels[24] = latestData.jarak_air ?? 0; }
+            else if (latestHourIndex >= 0 && latestHourIndex < 23) { if (chartWaterLevels[latestHourIndex] === null) chartWaterLevels[latestHourIndex] = latestData.jarak_air ?? 0; }
         }
     }
 
-    // --- LOGIKA SKRIP PETA RADIUS LUASAN BANJIR (100% AMAN DAN PRESISI) ---
+    // 1. RENDER CHART SECARA INDEPENDEN (GAYA VISUAL ASLI DIKEMBALIKAN)
+    function renderChart() {
+        const ctx = document.getElementById('waterLevelChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: fixedLabels, 
+                datasets: [{
+                    label: 'Ketinggian Air (cm)',
+                    data: chartWaterLevels, 
+                    borderColor: '#177FB9',
+                    backgroundColor: 'rgba(23, 127, 185, 0.1)',
+                    fill: true,
+                    spanGaps: true, 
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 5, 
+                    pointBackgroundColor: '#177FB9'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        min: 0,
+                        max: 500, 
+                        ticks: {
+                            stepSize: 100,
+                            font: { family: 'Poppins', size: 11 }
+                        },
+                        grid: { color: '#e5e7eb' },
+                        title: {
+                            display: true,
+                            text: 'Water Level (cm)',
+                            color: '#000000',
+                            font: { family: 'Poppins', size: 13, weight: 'normal' },
+                            padding: { bottom: 10 }
+                        }
+                    },
+                    x: {
+                        grid: { color: '#e5e7eb' },
+                        ticks: {
+                            font: { family: 'Poppins', size: 11 },
+                            maxRotation: 0,
+                            autoSkip: false, 
+                            callback: function(val, index) {
+                                let label = this.getLabelForValue(val);
+                                let targetHours = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00', '23:59'];
+                                return targetHours.includes(label) ? label : '';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Waktu (Real-time)',
+                            color: '#000000',
+                            font: { family: 'Poppins', size: 13, weight: 'normal' },
+                            padding: { top: 8 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // PANGGIL GRAFIK SEKARANG JUGA
+    renderChart();
+
+    // 2. LOGIKA PETA (LEAFLET) DI EKSEKUSI TERPISAH
     const centerLat = {{ $lat }};
     const centerLng = {{ $lng }};
     const affectedAreaHa = parseFloat("{{ $latest['affected_area_ha'] ?? 0 }}");
@@ -307,102 +364,29 @@
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    L.marker([centerLat, centerLng]).addTo(map)
-        .bindPopup("<b>Node 1</b><br>Lokasi Utama Sensor Air.")
-        .openPopup();
+    L.marker([centerLat, centerLng]).addTo(map).bindPopup("Node 1");
 
     if (affectedAreaHa > 0) {
         const radiusInMeters = Math.sqrt((affectedAreaHa * 10000) / Math.PI);
-
-        L.circle([centerLat, centerLng], {
-            color: '#F875AA',
-            fillColor: '#F875AA',
-            fillOpacity: 0.35,
-            radius: radiusInMeters
-        }).addTo(map).bindPopup(`Estimasi Luas Genangan: ${affectedAreaHa} ha`);
+        L.circle([centerLat, centerLng], { color: '#F875AA', fillColor: '#F875AA', fillOpacity: 0.35, radius: radiusInMeters }).addTo(map);
         
-        const circleBounds = L.circle([centerLat, centerLng], { radius: radiusInMeters }).getBounds();
-        map.fitBounds(circleBounds);
+        // Beri sedikit delay pada map zooming agar tidak membuat JS macet
+        setTimeout(() => {
+            try {
+                const circleBounds = L.circle([centerLat, centerLng], { radius: radiusInMeters }).getBounds();
+                map.fitBounds(circleBounds);
+            } catch (e) {
+                console.error("Map Bounds Error: ", e);
+            }
+        }, 500); 
     }
 
-    // RENDER GRAFIK WATER LEVEL CHART.JS (100% UTUH ASLI KAMU)
-    const ctx = document.getElementById('waterLevelChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: fixedLabels, 
-            datasets: [{
-                label: 'Ketinggian Air (cm)',
-                data: chartWaterLevels, 
-                borderColor: '#177FB9',
-                backgroundColor: 'rgba(23, 127, 185, 0.1)',
-                fill: true,
-                spanGaps: true, 
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 5, 
-                pointBackgroundColor: '#177FB9'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    min: 0,
-                    max: 500, 
-                    ticks: {
-                        stepSize: 100,
-                        font: { family: 'Poppins', size: 11 }
-                    },
-                    grid: { color: '#e5e7eb' },
-                    title: {
-                        display: true,
-                        text: 'Water Level (cm)',
-                        color: '#000000',
-                        font: { family: 'Poppins', size: 13, weight: 'normal' },
-                        padding: { bottom: 10 }
-                    }
-                },
-                x: {
-                    grid: { color: '#e5e7eb' },
-                    ticks: {
-                        font: { family: 'Poppins', size: 11 },
-                        maxRotation: 0,
-                        autoSkip: false, 
-                        callback: function(val, index) {
-                            let label = this.getLabelForValue(val);
-                            let targetHours = ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00', '23:59'];
-                            return targetHours.includes(label) ? label : '';
-                        }
-                    },
-                    title: {
-                        display: true,
-                        text: 'Waktu (Real-time)',
-                        color: '#000000',
-                        font: { family: 'Poppins', size: 13, weight: 'normal' },
-                        padding: { top: 8 }
-                    }
-                }
-            }
-        }
-    });
-
-    // ==========================================
-    // SINKRONISASI LOGIKA NOTIFIKASI REAL-TIME (KEMBAR DASHBOARD)
-    // ==========================================
     const alarmSound = new Audio("{{ asset('audio/sirine.mp3') }}");
     let lastStatusSiaga = 0; 
 
     function toggleNotificationDropdown() {
         const dropdown = document.getElementById('notif-dropdown');
         dropdown.classList.toggle('hidden');
-        
-        // Sesuai aturan: Hanya mematikan suara sirine saat diklik. Kedipan badge merah jangan hilang.
         if (!dropdown.classList.contains('hidden')) {
             alarmSound.pause();
             alarmSound.currentTime = 0;
@@ -418,12 +402,9 @@
             .then(response => response.json())
             .then(data => {
                 const currentSiaga = data.angka_status;
-
-                // ATUR KEDIP BULATAN MERAH (NOTIF-BADGE) & SIRINE AUDIO
                 const notifBadge = document.getElementById('notif-badge');
                 if (currentSiaga === 1 || currentSiaga === 2) {
                     notifBadge.classList.remove('hidden');
-                    
                     if (lastStatusSiaga !== 1 && lastStatusSiaga !== 2) {
                         alarmSound.loop = true;
                         alarmSound.play().catch(error => console.log("Audio play blocked by browser setup:", error));
@@ -433,8 +414,6 @@
                     alarmSound.pause();
                     alarmSound.currentTime = 0;
                 }
-
-                // RENDER DAFTAR RIWAYAT NOTIFIKASI 1 MINGGU
                 const notifList = document.getElementById('notif-list');
                 if (data.notif_history && data.notif_history.length > 0) {
                     let htmlContent = '';
@@ -454,13 +433,11 @@
                 } else {
                     notifList.innerHTML = '<div id="empty-notif" class="p-4 text-center text-gray-400 italic">Tidak ada riwayat siaga 1 & 2 dalam 1 minggu terakhir.</div>';
                 }
-
                 lastStatusSiaga = currentSiaga;
             })
             .catch(error => console.error("Gagal sinkronisasi data riwayat API di halaman analisis:", error));
     }
 
-    // Interval pooling disamakan 1 menit sekali (60000 ms) agar sinkron dengan dashboard utama
     setInterval(fetchRealtimeNotification, 60000);
     setTimeout(fetchRealtimeNotification, 1000);
 

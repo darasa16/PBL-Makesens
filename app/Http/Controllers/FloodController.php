@@ -221,7 +221,7 @@ class FloodController extends Controller
             "Expires"             => "0"
         ];
 
-        // Struktur 10 kolom CSV yang pas dan sinkron dengan tabel Sensor Logging kamu
+        // 🌟 STRUKTUR 15 KOLOM CSV SINKRON DENGAN TABEL BARU 🌟
         $columns = [
             'No', 
             'Timestamp', 
@@ -232,7 +232,12 @@ class FloodController extends Controller
             'Laju Aliran Sungai', 
             'Total Curah Hujan', 
             'Intensitas Hujan', 
-            'Status Level Air'
+            'Status Level Air',
+            'CPU', 
+            'Disk Terpakai', 
+            'Rata Rata Load 5 Menit', 
+            'Memori Terpakai', 
+            'RSSI'
         ];
 
         $callback = function() use($historyRaw, $columns) {
@@ -245,7 +250,7 @@ class FloodController extends Controller
                     continue;
                 }
 
-                // PROTEKSI KETAT: Mengubah data kosong / bertipe array menjadi string '-' agar PHP tidak crash
+                // PROTEKSI KETAT MENGHINDARI CRASH DATA KOSONG
                 $timestamp   = isset($item['timestamp']) && !is_array($item['timestamp']) ? $item['timestamp'] : '-';
                 $suhu        = isset($item['suhu']) && !is_array($item['suhu']) ? $item['suhu'] : '-';
                 $kelembapan  = isset($item['kelembapan']) && !is_array($item['kelembapan']) ? $item['kelembapan'] : '-';
@@ -258,6 +263,13 @@ class FloodController extends Controller
                 $floatLevel  = isset($item['float_level']) && !is_array($item['float_level']) ? $item['float_level'] : '0';
                 $status_level = ($floatLevel == '1') ? 'Air Tinggi' : 'Aman';
 
+                // 🌟 PROTEKSI KETAT UNTUK 5 KOLOM BARU 🌟
+                $cpu_percent = isset($item['cpu_percent']) && !is_array($item['cpu_percent']) ? $item['cpu_percent'] . ' %' : '-';
+                $disk_used   = isset($item['disk_used_gb']) && !is_array($item['disk_used_gb']) ? $item['disk_used_gb'] . ' GB' : '-';
+                $load_avg    = isset($item['load_avg_5min']) && !is_array($item['load_avg_5min']) ? $item['load_avg_5min'] : '-';
+                $memory_used = isset($item['memory_used_mb']) && !is_array($item['memory_used_mb']) ? $item['memory_used_mb'] . ' MB' : '-';
+                $rssi        = isset($item['rssi']) && !is_array($item['rssi']) ? $item['rssi'] . ' dBm' : '-';
+
                 fputcsv($file, [
                     $no++,
                     $timestamp,
@@ -268,7 +280,12 @@ class FloodController extends Controller
                     $flow,
                     $rain_total,
                     $rain_rate,
-                    $status_level
+                    $status_level,
+                    $cpu_percent,
+                    $disk_used,
+                    $load_avg,
+                    $memory_used,
+                    $rssi
                 ]);
             }
 
@@ -362,5 +379,219 @@ class FloodController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => 'Gagal menyimpan status.'], 400);
+    }
+
+    // --- FUNGSI DOWNLOAD PENGELOLAAN LAPORAN MENJADI PDF ---
+    public function downloadReportPdf()
+    {
+        $database = \Kreait\Laravel\Firebase\Facades\Firebase::database();
+        
+        $reportsData = $database->getReference('laporan_keluhan')->getValue();
+        $reportsRaw = is_array($reportsData) ? $reportsData : [];
+        $reportsRaw = array_reverse($reportsRaw, true); // Balik agar yang terbaru di atas
+
+        $filterDate = request()->get('date'); // YYYY-MM-DD
+        
+        // Jika ada filter tanggal yang dipilih
+        if (!empty($filterDate)) {
+            $filteredRaw = [];
+            foreach ($reportsRaw as $key => $item) {
+                if (is_array($item)) {
+                    $tglTabel = $item['tanggal_kejadian'] ?? '';
+                    
+                    // Terjemahkan nama bulan Indonesia ke Inggris agar terbaca oleh sistem PHP
+                    $tglTabel = str_ireplace(
+                        ['januari', 'februari', 'maret', 'mei', 'juni', 'juli', 'agustus', 'oktober', 'desember'], 
+                        ['january', 'february', 'march', 'may', 'june', 'july', 'august', 'october', 'december'], 
+                        $tglTabel
+                    );
+
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($tglTabel)->format('Y-m-d');
+                        if ($parsedDate === $filterDate) {
+                            $filteredRaw[$key] = $item;
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+            }
+            $reportsRaw = $filteredRaw;
+        }
+
+        // Panggil library DomPDF untuk membuat PDF dari view HTML
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.report', [
+            'reports' => $reportsRaw,
+            'date' => $filterDate
+        ]);
+
+        // Atur ukuran kertas (Opsional: 'A4' orientasi 'landscape' karena tabelnya panjang)
+        $pdf->setPaper('a4', 'landscape');
+
+        $namaFile = empty($filterDate) ? 'Laporan_Keluhan_Semua.pdf' : 'Laporan_Keluhan_' . $filterDate . '.pdf';
+        
+        return $pdf->download($namaFile);
+    }
+
+    // --- FUNGSI DOWNLOAD GABUNGAN (SENSOR + KELUHAN) MENJADI CSV ---
+    public function downloadCombinedCsv()
+    {
+        $database = \Kreait\Laravel\Firebase\Facades\Firebase::database();
+        $filterDate = request()->get('date');
+
+        // 1. AMBIL DAN FILTER DATA SENSOR
+        $historyData = $database->getReference('node1/history')->getValue();
+        $historyRaw = is_array($historyData) ? $historyData : [];
+        if (count($historyRaw) > 0 && !isset(reset($historyRaw)['suhu'])) {
+            $historyRaw = reset($historyRaw); 
+        }
+        $historyRaw = is_array($historyRaw) ? $historyRaw : [];
+        $historyRaw = array_reverse($historyRaw);
+
+        // 2. AMBIL DAN FILTER DATA KELUHAN
+        $reportsData = $database->getReference('laporan_keluhan')->getValue();
+        $reportsRaw = is_array($reportsData) ? $reportsData : [];
+        $reportsRaw = array_reverse($reportsRaw, true);
+
+        $filename = 'Laporan_Gabungan_Semua.csv';
+
+        // JIKA ADA FILTER TANGGAL
+        if (!empty($filterDate)) {
+            $filename = 'Laporan_Gabungan_' . $filterDate . '.csv';
+            
+            // Filter Sensor
+            $filteredHistory = [];
+            foreach ($historyRaw as $key => $item) {
+                if (is_array($item)) {
+                    $itemTimestamp = $item['timestamp'] ?? '';
+                    if (is_string($itemTimestamp) && str_contains($itemTimestamp, $filterDate)) {
+                        $filteredHistory[$key] = $item;
+                    }
+                }
+            }
+            $historyRaw = $filteredHistory;
+
+            // Filter Keluhan
+            $filteredReports = [];
+            foreach ($reportsRaw as $key => $item) {
+                if (is_array($item)) {
+                    $tglTabel = $item['tanggal_kejadian'] ?? '';
+                    $tglTabel = str_ireplace(
+                        ['januari', 'februari', 'maret', 'mei', 'juni', 'juli', 'agustus', 'oktober', 'desember'], 
+                        ['january', 'february', 'march', 'may', 'june', 'july', 'august', 'october', 'december'], 
+                        $tglTabel
+                    );
+                    try {
+                        $parsedDate = \Carbon\Carbon::parse($tglTabel)->format('Y-m-d');
+                        if ($parsedDate === $filterDate) {
+                            $filteredReports[$key] = $item;
+                        }
+                    } catch (\Exception $e) {
+                        continue;
+                    }
+                }
+            }
+            $reportsRaw = $filteredReports;
+        }
+
+        // 3. PROSES STREAM FILE CSV
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() use($historyRaw, $reportsRaw, $filterDate) {
+            $file = fopen('php://output', 'w');
+
+            // --- HEADER UMUM ---
+            fputcsv($file, ['MAKESENSES+AI - LAPORAN GABUNGAN SENSOR DAN KELUHAN']);
+            fputcsv($file, ['Tanggal Filter:', empty($filterDate) ? 'Keseluruhan Waktu' : $filterDate]);
+            fputcsv($file, []); // Baris kosong
+
+            // ==========================================
+            // BAGIAN 1: DATA SENSOR LINGKUNGAN
+            // ==========================================
+            fputcsv($file, ['--- BAGIAN A: DATA LOG SENSOR LINGKUNGAN ---']);
+            
+            // 🌟 HEADER CSV GABUNGAN DIPERBARUI DENGAN 5 KOLOM BARU 🌟
+            fputcsv($file, [
+                'No', 'Timestamp', 'Suhu Udara', 'Kelembaban Udara', 'Tekanan Udara', 
+                'Jarak Permukaan Air', 'Laju Aliran Sungai', 'Total Curah Hujan', 
+                'Intensitas Hujan', 'Status Level Air', 'CPU', 'Disk Terpakai', 
+                'Rata Rata Load 5 Menit', 'Memori Terpakai', 'RSSI'
+            ]);
+
+            $noSensor = 1;
+            foreach ($historyRaw as $item) {
+                if (!is_array($item)) continue;
+
+                $floatLevel  = isset($item['float_level']) && !is_array($item['float_level']) ? $item['float_level'] : '0';
+                
+                // 🌟 PROTEKSI DATA BARU CSV GABUNGAN 🌟
+                $cpu_percent = isset($item['cpu_percent']) && !is_array($item['cpu_percent']) ? $item['cpu_percent'] . ' %' : '-';
+                $disk_used   = isset($item['disk_used_gb']) && !is_array($item['disk_used_gb']) ? $item['disk_used_gb'] . ' GB' : '-';
+                $load_avg    = isset($item['load_avg_5min']) && !is_array($item['load_avg_5min']) ? $item['load_avg_5min'] : '-';
+                $memory_used = isset($item['memory_used_mb']) && !is_array($item['memory_used_mb']) ? $item['memory_used_mb'] . ' MB' : '-';
+                $rssi        = isset($item['rssi']) && !is_array($item['rssi']) ? $item['rssi'] . ' dBm' : '-';
+
+                fputcsv($file, [
+                    $noSensor++,
+                    isset($item['timestamp']) && !is_array($item['timestamp']) ? $item['timestamp'] : '-',
+                    isset($item['suhu']) && !is_array($item['suhu']) ? $item['suhu'] : '-',
+                    isset($item['kelembapan']) && !is_array($item['kelembapan']) ? $item['kelembapan'] : '-',
+                    isset($item['tekanan']) && !is_array($item['tekanan']) ? $item['tekanan'] : '-',
+                    isset($item['jarak_air']) && !is_array($item['jarak_air']) ? $item['jarak_air'] : '-',
+                    isset($item['flow']) && !is_array($item['flow']) ? $item['flow'] : '-',
+                    isset($item['rain_total']) && !is_array($item['rain_total']) ? $item['rain_total'] : '-',
+                    isset($item['rain_rate']) && !is_array($item['rain_rate']) ? $item['rain_rate'] : '-',
+                    ($floatLevel == '1') ? 'Air Tinggi' : 'Aman',
+                    $cpu_percent,
+                    $disk_used,
+                    $load_avg,
+                    $memory_used,
+                    $rssi
+                ]);
+            }
+
+            // Memberikan jarak antar tabel
+            fputcsv($file, []);
+            fputcsv($file, []);
+
+            // ==========================================
+            // BAGIAN 2: DATA KELUHAN
+            // ==========================================
+            fputcsv($file, ['--- BAGIAN B: DATA PENGELOLAAN LAPORAN KELUHAN ---']);
+            fputcsv($file, [
+                'No', 'Nama Pelapor', 'Waktu Kejadian', 'Lokasi', 
+                'Deskripsi Keluhan', 'Estimasi Biaya', 'Status'
+            ]);
+
+            $noReport = 1;
+            foreach ($reportsRaw as $item) {
+                if (!is_array($item)) continue;
+
+                $statusValue = $item['status'] ?? 'pending';
+                if ($statusValue === 'process') $statusTeks = 'Proses';
+                elseif ($statusValue === 'complete') $statusTeks = 'Selesai';
+                else $statusTeks = 'Tertunda';
+
+                fputcsv($file, [
+                    $noReport++,
+                    $item['nama_pelapor'] ?? '-',
+                    $item['tanggal_kejadian'] ?? '-',
+                    $item['lokasi_kejadian'] ?? '-',
+                    $item['deskripsi_keluhan'] ?? '-',
+                    isset($item['estimasi_biaya']) ? $item['estimasi_biaya'] : '-',
+                    $statusTeks
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
